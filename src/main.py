@@ -85,6 +85,7 @@ class Bot:
     def runManual(self):
         self.isRunning = True
         self.print("Extreme Axolotls!")
+        self.print("Ready")
         while self.isRunning:
             strafePercent = self.controller.axisB.position() + self.controller.axisC.position()
             self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
