@@ -8,6 +8,8 @@ class Bot:
     def __init__(self):
         self.isRunning = False
         self.isScreenSetup = False
+        self.screenColor = Color.BLUE
+        self.penColor = Color.WHITE
 
     def setup(self):
         self.brain = Brain()
@@ -31,13 +33,23 @@ class Bot:
     def setupScreen(self):
         if not self.isScreenSetup:
             self.brain.screen.clear_screen()
-            screenColor = Color.BLUE
-            penColor = Color.YELLOW
             self.brain.screen.set_font(FontType.MONO20)
-            self.brain.screen.set_pen_color(penColor)
-            self.brain.screen.set_fill_color(screenColor)
+            self.brain.screen.set_pen_color(self.penColor)
+            self.brain.screen.set_fill_color(self.screenColor)
             self.brain.screen.set_cursor(1, 1)
             self.isScreenSetup = True
+            self.clearScreen()
+
+    def clearScreen(self, screenColor = None, penColor = None):
+        self.screenColor = self.screenColor if screenColor is None else screenColor
+        self.penColor = self.penColor if penColor is None else penColor
+        self.brain.screen.clear_screen()
+        self.brain.screen.set_fill_color(self.screenColor)
+        self.brain.screen.set_pen_color(self.screenColor)
+        self.brain.screen.draw_rectangle(0, 0, 170, 100, self.screenColor)
+        self.brain.screen.set_pen_color(self.penColor)
+        self.brain.screen.set_font(FontType.MONO20)
+        self.brain.screen.set_cursor(1, 1)
 
     def print(self, message):
         self.setupScreen()
