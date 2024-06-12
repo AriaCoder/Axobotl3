@@ -19,13 +19,21 @@ class Bot:
         self.setupPortMappings()
         self.setupDrivetrain()
         self.setupController()
+        self.setupEyes()
 
-    def setupPortMappings(self):
+    def setupPortMappings(self):    
         # Gear ratio is 2:1
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
         self.wheelCenter = Motor(Ports.PORT10, 2.0, False)
+        self.eyeLeft = ColorSensor(Ports.PORT2)
+        self.eyeRight = ColorSensor(Ports.PORT5)
 
+    def setupEyes(self):
+        self.eyeLeft.set_light_power(50)
+        self.eyeRight.set_light_power(50)
+
+        
     def setupController(self):
         # Delay to make sure events are registered correctly.
         wait(15, MSEC)
@@ -91,8 +99,10 @@ class Bot:
             self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
             self.updateDriveMotor(self.wheelRight, self.controller.axisD.position(), 5)
             self.updateDriveMotor(self.wheelCenter, strafePercent, 5)
-            sleep(30)
-
+            sleep(500)
+            print(str(self.eyeLeft.color()))
+            print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))
+            
 # Where it all begins!    
 bot = Bot()
 bot.run()
