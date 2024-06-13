@@ -19,6 +19,7 @@ class Bot:
         self.setupPortMappings()
         self.setupDrivetrain()
         self.setupController()
+        self.setupCatapult()
         self.setupEyes()
 
     def setupPortMappings(self):    
@@ -26,8 +27,10 @@ class Bot:
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
         self.wheelCenter = Motor(Ports.PORT10, 2.0, False)
+        self.catapult = Motor(Ports.PORT11)
         self.eyeLeft = ColorSensor(Ports.PORT2)
         self.eyeRight = ColorSensor(Ports.PORT5)
+        self.catapultBumper = Bumper(Ports.PORT8)
 
     def setupEyes(self):
         self.eyeLeft.set_light_power(50)
@@ -70,6 +73,24 @@ class Bot:
         motor.set_max_torque(100, PERCENT)
         motor.spin(FORWARD)
 
+    def onCatapultBumperPressed(self):
+        self.catapult.stop()
+
+    def setupCatapult(self):
+        self.catapult.set_velocity(50)
+        self.catapult.set_stopping(HOLD)
+        self.catapultBumper.pressed(self.onCatapultBumperPressed)
+        self.controller.buttonLUp.pressed(self.windCatapult)
+        self.controller.buttonLDown.pressed(self.releaseCatapult)
+
+    def windCatapult(self):
+        if not self.catapultBumper.pressing():
+            self.catapult.spin(FORWARD)
+
+    def releaseCatapult(self):
+        if self.catapultBumper.pressing():
+            self.catapult.spin_for(REVERSE, 600)
+
     def setupDrivetrain(self):
         self.setupDriveMotor(self.wheelLeft)
         self.setupDriveMotor(self.wheelRight)
@@ -89,6 +110,7 @@ class Bot:
     def run(self):
         self.setup()
         self.runManual()
+
 
     def runManual(self):
         self.isRunning = True
