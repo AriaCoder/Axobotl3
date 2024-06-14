@@ -30,8 +30,8 @@ class Bot:
         self.eyeRight = ColorSensor(Ports.PORT5)
 
     def setupEyes(self):
-        self.eyeLeft.set_light_power(50)
-        self.eyeRight.set_light_power(50)
+        self.eyeLeft.set_light_power(100)
+        self.eyeRight.set_light_power(100)
 
         
     def setupController(self):
@@ -88,7 +88,18 @@ class Bot:
 
     def run(self):
         self.setup()
-        self.runManual()
+        #self.runManual()
+        self.runAuto()
+
+    def runAuto(self):
+        self.print("Extreme Axolotls")
+        self.driveToLine()
+    
+    def driveToLine(self):
+        self.isRunning = True
+        while self.isRunning: 
+            print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))
+            sleep(500)
 
     def runManual(self):
         self.isRunning = True
@@ -96,13 +107,14 @@ class Bot:
         self.print("Ready")
         while self.isRunning:
             strafePercent = self.controller.axisB.position() + self.controller.axisC.position()
-            self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
             self.updateDriveMotor(self.wheelRight, self.controller.axisD.position(), 5)
+            self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
             self.updateDriveMotor(self.wheelCenter, strafePercent, 5)
             sleep(500)
             print(str(self.eyeLeft.color()))
-            print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))
-            
+            print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))            
+
+
 # Where it all begins!    
 bot = Bot()
 bot.run()
