@@ -20,6 +20,7 @@ class Bot:
         self.setupDrivetrain()
         self.setupController()
         self.setupCatapult()
+        self.setupTensioner()
         self.setupEyes()
 
     def setupPortMappings(self):    
@@ -31,10 +32,17 @@ class Bot:
         self.eyeLeft = ColorSensor(Ports.PORT2)
         self.eyeRight = ColorSensor(Ports.PORT5)
         self.catapultBumper = Bumper(Ports.PORT8)
+        self.tensioner = Motor(Ports.PORT9)
 
     def setupEyes(self):
         self.eyeLeft.set_light_power(100)
         self.eyeRight.set_light_power(100)
+
+    def setupTensioner(self):
+        self.tensioner.set_velocity(100, PERCENT)
+        self.tensioner.set_max_torque(100, PERCENT)
+        self.controller.buttonRUp.pressed(self.windTensioner)
+        self.controller.buttonRDown.pressed(self.unwindTensioner)
 
         
     def setupController(self):
@@ -90,6 +98,14 @@ class Bot:
     def releaseCatapult(self):
         if self.catapultBumper.pressing():
             self.catapult.spin_for(REVERSE, 600)
+
+    def windTensioner(self):
+        self.tensioner.set_stopping(HOLD)
+        self.tensioner.spin_for(FORWARD, 180)
+
+    def unwindTensioner(self):
+        self.tensioner.set_stopping(COAST)
+        self.tensioner.spin_for(REVERSE, 180)
 
     def setupDrivetrain(self):
         self.setupDriveMotor(self.wheelLeft)
