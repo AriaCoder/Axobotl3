@@ -101,11 +101,17 @@ class Bot:
 
     def windTensioner(self):
         self.tensioner.set_stopping(HOLD)
-        self.tensioner.spin_for(FORWARD, 180)
+        while self.controller.buttonRUp.pressing():
+            self.tensioner.spin(FORWARD)
+        else:
+            self.tensioner.stop(HOLD)
 
     def unwindTensioner(self):
         self.tensioner.set_stopping(COAST)
-        self.tensioner.spin_for(REVERSE, 180)
+        while self.controller.buttonRDown.pressing():
+            self.tensioner.spin(REVERSE)
+        else:
+            self.tensioner.stop(COAST)
 
     def setupDrivetrain(self):
         self.setupDriveMotor(self.wheelLeft)
