@@ -97,9 +97,20 @@ class Bot:
     
     def driveToLine(self):
         self.isRunning = True
-        while self.isRunning: 
-            print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))
-            sleep(500)
+        self.wheelRight.set_velocity (10, PERCENT)
+        self.wheelLeft.set_velocity (10, PERCENT)
+        self.brain.screen.set_cursor(2, 1)
+        while self.isRunning:
+            sleep(50)
+            if self.eyeRight.brightness() < 20:
+                #stop right drivetrain
+                self.wheelRight.set_velocity(0, PERCENT)
+                #self.wheelRight.spin_for(FORWARD, 35.0, DEGREES)
+            if self.eyeLeft.brightness() < 20:
+                #stop right drivetrain
+                self.wheelLeft.set_velocity(0, PERCENT)
+                #self.wheelLeft.spin_for(FORWARD, 35.0, DEGREES)
+            self.print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))
 
     def runManual(self):
         self.isRunning = True
