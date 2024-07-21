@@ -94,11 +94,11 @@ class Bot:
 
     def releaseCatapult(self):
         if self.catapultBumper.pressing():
-            self.catapult.spin_for(FORWARD, 50, DEGREES)
+            self.catapult.spin_for(FORWARD, 100, DEGREES)
 
     def windCatapult(self):
         if not self.catapultBumper.pressing():
-            self.catapult.spin(REVERSE)
+            self.catapult.spin_for(REVERSE, 140, DEGREES)
 
     def windTensioner(self):
         self.tensioner.set_stopping(HOLD)
