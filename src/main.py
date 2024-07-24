@@ -113,10 +113,6 @@ class Bot:
               and self.inertial.is_calibrating() 
               and not self.cancelCalibration):
             wait(100, MSEC)
-        
-    def windCatapult(self):
-        if not self.catapultBumper.pressing():
-            self.catapult.spin(FORWARD)
 
     def releaseCatapult(self):
         if self.catapultBumper.pressing():
