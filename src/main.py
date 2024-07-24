@@ -10,6 +10,7 @@ class Bot:
         self.isScreenSetup = False
         self.screenColor = Color.BLUE
         self.penColor = Color.WHITE
+        self.cancelCalibration = False
 
     def setup(self):
         self.brain = Brain()
@@ -27,7 +28,7 @@ class Bot:
         # Gear ratio is 2:1
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
-        self.wheelCenter = Motor(Ports.PORT10, 2.0, False)
+        self.wheelCenter = Motor(Ports.PORT10, 2.0, True)
         self.catapult = Motor(Ports.PORT11)
         self.eyeLeft = ColorSensor(Ports.PORT2)
         self.eyeRight = ColorSensor(Ports.PORT5)
@@ -91,13 +92,39 @@ class Bot:
         self.controller.buttonLUp.pressed(self.windCatapult)
         self.controller.buttonLDown.pressed(self.releaseCatapult)
 
+    def calibrate(self, waitToFinish: bool = False):
+        self.print("Calibrating...")
+        self.inertial.calibrate()
+        countdown = 3000/50  
+        while (self.inertial.is_calibrating()
+                and countdown > 0
+                and not self.cancelCalibration):
+            wait(50, MSEC)
+            countdown = countdown - 1
+        if self.cancelCalibration:   
+            self.print("Cancelled Calibration!")
+            return False
+        elif countdown > 0 and not self.inertial.is_calibrating():
+            self.print("Calibrated")
+            self.brain.play_sound(SoundType.TADA)
+            self.isCalibrated = True
+            return True
+        while (waitToFinish
+              and self.inertial.is_calibrating() 
+              and not self.cancelCalibration):
+            wait(100, MSEC)
+        
     def windCatapult(self):
         if not self.catapultBumper.pressing():
             self.catapult.spin(FORWARD)
 
     def releaseCatapult(self):
         if self.catapultBumper.pressing():
-            self.catapult.spin_for(REVERSE, 600)
+            self.catapult.spin_for(FORWARD, 100, DEGREES)
+
+    def windCatapult(self):
+        if not self.catapultBumper.pressing():
+            self.catapult.spin_for(REVERSE, 140, DEGREES)
 
     def windTensioner(self):
         self.tensioner.set_stopping(HOLD)
@@ -119,8 +146,9 @@ class Bot:
         self.setupDriveMotor(self.wheelCenter)
 
     def stopAll(self):
-        pass
-    
+        self.catapult.stop(HOLD)    
+        self.tensioner.stop(COAST)
+
     def updateDriveMotor(self, drive: Motor, velocity: float, joystickTolerance: int):
         velocity = velocity**3
         velocity = velocity/10000
@@ -131,30 +159,30 @@ class Bot:
 
     def run(self):
         self.setup()
-        #self.runManual()
-        self.runAuto()
+        self.runManual()
+         #self.runAuto()
 
     def runAuto(self):
+        self.calibrate(True)
         self.print("Extreme Axolotls")
         self.driveToLine()
     
-    def driveToLine(self):
+    def driveToLine(self, headinginDeg: float = 0.0):
         self.isRunning = True
-        self.wheelRight.set_velocity (10, PERCENT)
-        self.wheelLeft.set_velocity (10, PERCENT)
-        self.brain.screen.set_cursor(2, 1)
+        self.wheelRight.set_velocity(30, PERCENT)
+        self.wheelLeft.set_velocity(30, PERCENT)
         while self.isRunning:
             sleep(50)
-            if self.eyeRight.brightness() < 20:
-                #stop right drivetrain
-                self.wheelRight.set_velocity(0, PERCENT)
-                #self.wheelRight.spin_for(FORWARD, 35.0, DEGREES)
-            if self.eyeLeft.brightness() < 20:
-                #stop right drivetrain
-                self.wheelLeft.set_velocity(0, PERCENT)
-                #self.wheelLeft.spin_for(FORWARD, 35.0, DEGREES)
-            self.print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))
-
+            error = (self.inertial.heading() - headinginDeg)/180
+            #if self.eyeRight.brightness() < 20:
+                #self.wheelRight.set_velocity(0, PERCENT)
+            #else: self.wheelRight.set_velocity(30, PERCENT)
+            #if self.eyeLeft.brightness() < 20:
+                #self.wheelLeft.set_velocity(0, PERCENT)
+            #else: self.wheelLeft.set_velocity(30, PERCENT)
+            #wait(100)
+            self.wheelRight.set_velocity(30 * (1 - error), PERCENT)
+            self.wheelLeft.set_velocity(30 * (1 + error), PERCENT)
 
     def runManual(self):
         self.isRunning = True
@@ -165,9 +193,9 @@ class Bot:
             self.updateDriveMotor(self.wheelRight, self.controller.axisD.position(), 5)
             self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
             self.updateDriveMotor(self.wheelCenter, strafePercent, 5)
-            sleep(500)
-            print(str(self.eyeLeft.color()))
-            print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))            
+            sleep(100)
+        #    print(str(self.eyeLeft.color()))
+        #   print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))            
 
 
 # Where it all begins!    
