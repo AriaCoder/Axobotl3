@@ -10,6 +10,7 @@ class Bot:
         self.isScreenSetup = False
         self.screenColor = Color.BLUE
         self.penColor = Color.WHITE
+        self.cancelCalibration = False
 
     def setup(self):
         self.brain = Brain()
@@ -88,9 +89,34 @@ class Bot:
         self.catapult.set_velocity(50)
         self.catapult.set_stopping(HOLD)
         self.catapultBumper.pressed(self.onCatapultBumperPressed)
-        self.controller.buttonLUp.pressed(self.releaseCatapult)
-        self.controller.buttonLDown.pressed(self.windCatapult)
-        self.controller.buttonEDown.pressed(self.stopAll)
+        self.controller.buttonLUp.pressed(self.windCatapult)
+        self.controller.buttonLDown.pressed(self.releaseCatapult)
+
+    def calibrate(self, waitToFinish: bool = False):
+        self.print("Calibrating...")
+        self.inertial.calibrate()
+        countdown = 3000/50  
+        while (self.inertial.is_calibrating()
+                and countdown > 0
+                and not self.cancelCalibration):
+            wait(50, MSEC)
+            countdown = countdown - 1
+        if self.cancelCalibration:   
+            self.print("Cancelled Calibration!")
+            return False
+        elif countdown > 0 and not self.inertial.is_calibrating():
+            self.print("Calibrated")
+            self.brain.play_sound(SoundType.TADA)
+            self.isCalibrated = True
+            return True
+        while (waitToFinish
+              and self.inertial.is_calibrating() 
+              and not self.cancelCalibration):
+            wait(100, MSEC)
+        
+    def windCatapult(self):
+        if not self.catapultBumper.pressing():
+            self.catapult.spin(FORWARD)
 
     def releaseCatapult(self):
         if self.catapultBumper.pressing():
@@ -137,26 +163,26 @@ class Bot:
          #self.runAuto()
 
     def runAuto(self):
+        self.calibrate(True)
         self.print("Extreme Axolotls")
         self.driveToLine()
     
-    def driveToLine(self):
+    def driveToLine(self, headinginDeg: float = 0.0):
         self.isRunning = True
-        self.wheelRight.set_velocity (10, PERCENT)
-        self.wheelLeft.set_velocity (10, PERCENT)
-        self.brain.screen.set_cursor(2, 1)
+        self.wheelRight.set_velocity(30, PERCENT)
+        self.wheelLeft.set_velocity(30, PERCENT)
         while self.isRunning:
             sleep(50)
-            if self.eyeRight.brightness() < 20:
-                #stop right drivetrain
-                self.wheelRight.set_velocity(0, PERCENT)
-                #self.wheelRight.spin_for(FORWARD, 35.0, DEGREES)
-            if self.eyeLeft.brightness() < 20:
-                #stop right drivetrain
-                self.wheelLeft.set_velocity(0, PERCENT)
-                #self.wheelLeft.spin_for(FORWARD, 35.0, DEGREES)
-            self.print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))
-
+            error = (self.inertial.heading() - headinginDeg)/180
+            #if self.eyeRight.brightness() < 20:
+                #self.wheelRight.set_velocity(0, PERCENT)
+            #else: self.wheelRight.set_velocity(30, PERCENT)
+            #if self.eyeLeft.brightness() < 20:
+                #self.wheelLeft.set_velocity(0, PERCENT)
+            #else: self.wheelLeft.set_velocity(30, PERCENT)
+            #wait(100)
+            self.wheelRight.set_velocity(30 * (1 - error), PERCENT)
+            self.wheelLeft.set_velocity(30 * (1 + error), PERCENT)
 
     def runManual(self):
         self.isRunning = True
