@@ -27,7 +27,7 @@ class Bot:
         # Gear ratio is 2:1
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
-        self.wheelCenter = Motor(Ports.PORT10, 2.0, False)
+        self.wheelCenter = Motor(Ports.PORT10, 2.0, True)
         self.catapult = Motor(Ports.PORT11)
         self.eyeLeft = ColorSensor(Ports.PORT2)
         self.eyeRight = ColorSensor(Ports.PORT5)
@@ -133,8 +133,8 @@ class Bot:
 
     def run(self):
         self.setup()
-        #self.runManual()
-        self.runAuto()
+        self.runManual()
+         #self.runAuto()
 
     def runAuto(self):
         self.print("Extreme Axolotls")
@@ -167,9 +167,9 @@ class Bot:
             self.updateDriveMotor(self.wheelRight, self.controller.axisD.position(), 5)
             self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
             self.updateDriveMotor(self.wheelCenter, strafePercent, 5)
-            sleep(500)
-            print(str(self.eyeLeft.color()))
-            print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))            
+            sleep(100)
+        #    print(str(self.eyeLeft.color()))
+        #   print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))            
 
 
 # Where it all begins!    
