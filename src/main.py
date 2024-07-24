@@ -120,7 +120,11 @@ class Bot:
 
     def releaseCatapult(self):
         if self.catapultBumper.pressing():
-            self.catapult.spin_for(REVERSE, 600)
+            self.catapult.spin_for(FORWARD, 100, DEGREES)
+
+    def windCatapult(self):
+        if not self.catapultBumper.pressing():
+            self.catapult.spin_for(REVERSE, 140, DEGREES)
 
     def windTensioner(self):
         self.tensioner.set_stopping(HOLD)
@@ -142,8 +146,9 @@ class Bot:
         self.setupDriveMotor(self.wheelCenter)
 
     def stopAll(self):
-        pass
-    
+        self.catapult.stop(HOLD)    
+        self.tensioner.stop(COAST)
+
     def updateDriveMotor(self, drive: Motor, velocity: float, joystickTolerance: int):
         velocity = velocity**3
         velocity = velocity/10000
