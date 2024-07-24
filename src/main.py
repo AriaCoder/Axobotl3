@@ -171,17 +171,18 @@ class Bot:
         self.isRunning = True
         self.wheelRight.set_velocity(30, PERCENT)
         self.wheelLeft.set_velocity(30, PERCENT)
-        self.brain.screen.set_cursor(2, 1)
         while self.isRunning:
             sleep(50)
-            error = self.inertial.heading() - headinginDeg
-            if self.eyeRight.brightness() < 20:
-                self.wheelRight.set_velocity(0, PERCENT)
-            else: self.wheelRight.set_velocity(30, PERCENT)
-            if self.eyeLeft.brightness() < 20
-                self.wheelLeft.set_velocity(0, PERCENT)
-            else: self.wheelLeft.set_velocity(30, PERCENT)
-            
+            error = (self.inertial.heading() - headinginDeg)/180
+            #if self.eyeRight.brightness() < 20:
+                #self.wheelRight.set_velocity(0, PERCENT)
+            #else: self.wheelRight.set_velocity(30, PERCENT)
+            #if self.eyeLeft.brightness() < 20:
+                #self.wheelLeft.set_velocity(0, PERCENT)
+            #else: self.wheelLeft.set_velocity(30, PERCENT)
+            #wait(100)
+            self.wheelRight.set_velocity(30 * (1 - error), PERCENT)
+            self.wheelLeft.set_velocity(30 * (1 + error), PERCENT)
 
     def runManual(self):
         self.isRunning = True
