@@ -167,8 +167,8 @@ class Bot:
 
     def run(self):
         self.setup()
-        self.runManual()
-         #self.runAuto()
+        #self.runManual()
+        self.runAuto()
 
     def runAuto(self):
         self.calibrate(True)
@@ -176,21 +176,37 @@ class Bot:
         self.driveToLine()
     
     def driveToLine(self, headinginDeg: float = 0.0):
-        self.isRunning = True
-        self.wheelRight.set_velocity(30, PERCENT)
-        self.wheelLeft.set_velocity(30, PERCENT)
-        while self.isRunning:
-            sleep(50)
-            error = (self.inertial.heading() - headinginDeg)/180
-            #if self.eyeRight.brightness() < 20:
-                #self.wheelRight.set_velocity(0, PERCENT)
-            #else: self.wheelRight.set_velocity(30, PERCENT)
-            #if self.eyeLeft.brightness() < 20:
-                #self.wheelLeft.set_velocity(0, PERCENT)
-            #else: self.wheelLeft.set_velocity(30, PERCENT)
-            #wait(100)
-            self.wheelRight.set_velocity(30 * (1 - error), PERCENT)
-            self.wheelLeft.set_velocity(30 * (1 + error), PERCENT)
+        notBlack = True
+        while notBlack:
+            sleep(1000)
+            if self.eyeRight.brightness() < 20:
+                self.wheelRight.set_velocity(0, PERCENT)
+                notBlack = False
+            else: self.wheelRight.set_velocity(30, PERCENT)
+            if self.eyeLeft.brightness() < 20:
+                self.wheelLeft.set_velocity(0, PERCENT)
+                notBlack = False
+            else: self.wheelLeft.set_velocity(30, PERCENT)
+            if (self.inertial.heading() > 330 or self.inertial.heading() < 30):
+                self.wiggleToPlace()
+            else:
+                self.rotateToPlace
+        self.wheelLeft.set_velocity(0, PERCENT)
+        self.wheelRight.set_velocity(0, PERCENT)
+    
+    def wiggleToPlace(self, headinginDeg: float = 0.0):
+        error = (self.inertial.heading() - headinginDeg)/180
+        self.wheelRight.set_velocity(30 * (1 + error), PERCENT)
+        self.wheelLeft.set_velocity(30 * (1 - error), PERCENT)
+        while error < 30 and error > 330:
+            wait (1)
+
+    def rotateToPlace(self, headinginDeg: float = 0.0):
+        error = (self.inertial.heading() - headinginDeg)/180
+        self.wheelRight.set_velocity(20 * (1 + error), PERCENT)
+        self.wheelLeft.set_velocity(20 * (-1 - error), PERCENT)
+        while error > 30 and error < 330:
+            wait (1)
 
     def runManual(self):
         self.isRunning = True
