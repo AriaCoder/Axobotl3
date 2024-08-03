@@ -23,6 +23,7 @@ class Bot:
         self.setupCatapult()
         self.setupTensioner()
         self.setupEyes()
+        self.setupSensor()
 
     def setupPortMappings(self):    
         # Gear ratio is 2:1
@@ -34,6 +35,7 @@ class Bot:
         self.eyeRight = ColorSensor(Ports.PORT5)
         self.catapultBumper = Bumper(Ports.PORT8)
         self.tensioner = Motor(Ports.PORT9)
+        self.catapultSensor = Distance(Ports.PORT2)
 
     def setupEyes(self):
         self.eyeLeft.set_light_power(100)
@@ -113,6 +115,16 @@ class Bot:
               and self.inertial.is_calibrating() 
               and not self.cancelCalibration):
             wait(100, MSEC)
+
+    def setupSensor(self):
+        while True:
+            self.checkSensor()
+            wait(0.5, SECONDS)
+ 
+
+    def checkSensor(self):
+        if self.catapultSensor.object_distance(MM) < 30:
+            self.print("CATAPULTDOWN")
 
     def releaseCatapult(self):
         if self.catapultBumper.pressing():
