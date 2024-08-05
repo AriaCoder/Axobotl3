@@ -11,6 +11,7 @@ class Bot:
         self.screenColor = Color.BLUE
         self.penColor = Color.WHITE
         self.cancelCalibration = False
+        self.catapultDown = False
 
     def setup(self):
         self.brain = Brain()
@@ -117,23 +118,28 @@ class Bot:
             wait(100, MSEC)
 
     def setupSensor(self):
-        while True:
-            self.checkSensor()
-            wait(0.5, SECONDS)
- 
+        pass
 
-    def checkSensor(self):
+    def checkCatapultDown(self):
         if self.catapultSensor.object_distance(MM) < 30:
-            self.print("CATAPULTDOWN")
+            self.catapultDown = True
+            self.print("DOWN!")
+        else:
+            self.catapultDown = False
 
-    def releaseCatapult(self):
-        if self.catapultBumper.pressing():
-            self.catapult.spin_for(FORWARD, 100, DEGREES)
+    def releaseCatapult(self): # Down Button
+        if self.catapultDown == True:
+            self.catapult.spin_for(REVERSE, 360, DEGREES)
+            self.checkCatapultDown()
 
-    def windCatapult(self):
-        if not self.catapultBumper.pressing():
-            self.catapult.spin_for(REVERSE, 140, DEGREES)
+    def windCatapult(self):  # Up Button
+        while not self.catapultDown:
+            self.catapult.spin_for(REVERSE,45,DEGREES)
+            self.checkCatapultDown()
+            print("hi")
 
+        self.checkCatapultDown()
+ 
     def windTensioner(self):
         self.tensioner.set_stopping(HOLD)
         while self.controller.buttonRUp.pressing():
@@ -167,8 +173,8 @@ class Bot:
 
     def run(self):
         self.setup()
-        #self.runManual()
-        self.runAuto()
+        self.runManual()
+        #self.runAuto()
 
     def runAuto(self):
         self.calibrate(True)
