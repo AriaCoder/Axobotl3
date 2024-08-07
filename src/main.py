@@ -134,11 +134,11 @@ class Bot:
 
     def windCatapult(self):  # Up Button
         while not self.catapultDown:
-            self.catapult.spin_for(REVERSE,45,DEGREES)
+            self.catapult.spin(FORWARD)
             self.checkCatapultDown()
+            wait(100, MSEC)
             print("hi")
-
-        self.checkCatapultDown()
+        self.catapult.stop(HOLD)
  
     def windTensioner(self):
         self.tensioner.set_stopping(HOLD)
