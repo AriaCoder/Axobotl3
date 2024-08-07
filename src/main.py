@@ -129,7 +129,7 @@ class Bot:
 
     def releaseCatapult(self): # Down Button
         if self.catapultDown == True:
-            self.catapult.spin_for(REVERSE, 360, DEGREES)
+            self.catapult.spin_for(FORWARD, 360, DEGREES)
             self.checkCatapultDown()
 
     def windCatapult(self):  # Up Button
