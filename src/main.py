@@ -175,10 +175,7 @@ class Bot:
                 self.wheelLeft.set_velocity(0, PERCENT)
                 notBlack = False
             else: self.wheelLeft.set_velocity(30, PERCENT)
-            if (self.inertial.heading() > 330 or self.inertial.heading() < 30):
-                self.wiggleToPlace()
-            else:
-                self.rotateToPlace
+            self.rotateToPlace
         self.wheelLeft.set_velocity(0, PERCENT)
         self.wheelRight.set_velocity(0, PERCENT)
     
@@ -190,7 +187,7 @@ class Bot:
             wait (1)
 
     def rotateToPlace(self, headinginDeg: float = 0.0):
-        error = (self.inertial.heading() - headinginDeg)/180
+        error = (headinginDeg - self.inertial.heading())/180
         self.wheelRight.set_velocity(20 * (1 + error), PERCENT)
         self.wheelLeft.set_velocity(20 * (-1 - error), PERCENT)
         while error > 30 and error < 330:
