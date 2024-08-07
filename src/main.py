@@ -11,6 +11,7 @@ class Bot:
         self.screenColor = Color.BLUE
         self.penColor = Color.WHITE
         self.cancelCalibration = False
+        self.catapultDown = False
 
     def setup(self):
         self.brain = Brain()
@@ -23,6 +24,7 @@ class Bot:
         self.setupCatapult()
         self.setupTensioner()
         self.setupEyes()
+        self.setupSensor()
 
     def setupPortMappings(self):    
         # Gear ratio is 2:1
@@ -34,6 +36,7 @@ class Bot:
         self.eyeRight = ColorSensor(Ports.PORT5)
         self.catapultBumper = Bumper(Ports.PORT8)
         self.tensioner = Motor(Ports.PORT9)
+        self.catapultSensor = Distance(Ports.PORT2)
 
     def setupEyes(self):
         self.eyeLeft.set_light_power(100)
@@ -114,14 +117,29 @@ class Bot:
               and not self.cancelCalibration):
             wait(100, MSEC)
 
-    def releaseCatapult(self):
-        if self.catapultBumper.pressing():
-            self.catapult.spin_for(FORWARD, 100, DEGREES)
+    def setupSensor(self):
+        pass
 
-    def windCatapult(self):
-        if not self.catapultBumper.pressing():
-            self.catapult.spin_for(REVERSE, 140, DEGREES)
+    def checkCatapultDown(self):
+        if self.catapultSensor.object_distance(MM) < 30:
+            self.catapultDown = True
+            self.print("DOWN!")
+        else:
+            self.catapultDown = False
 
+    def releaseCatapult(self): # Down Button
+        if self.catapultDown == True:
+            self.catapult.spin_for(FORWARD, 360, DEGREES)
+            self.checkCatapultDown()
+
+    def windCatapult(self):  # Up Button
+        while not self.catapultDown:
+            self.catapult.spin(FORWARD)
+            self.checkCatapultDown()
+            wait(100, MSEC)
+            print("hi")
+        self.catapult.stop(HOLD)
+ 
     def windTensioner(self):
         self.tensioner.set_stopping(HOLD)
         while self.controller.buttonRUp.pressing():
@@ -155,8 +173,8 @@ class Bot:
 
     def run(self):
         self.setup()
-        #self.runManual()
-        self.runAuto()
+        self.runManual()
+        #self.runAuto()
 
     def runAuto(self):
         self.calibrate(True)
