@@ -31,7 +31,8 @@ class Bot:
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
         self.wheelCenter = Motor(Ports.PORT10, 2.0, True)
-        self.catapult = Motor(Ports.PORT11)
+        self.catapultRight = Motor(Ports.PORT11)
+        self.catapultLeft = Motor(Ports.PORT3, True)
         self.eyeLeft = ColorSensor(Ports.PORT2)
         self.eyeRight = ColorSensor(Ports.PORT5)
         self.catapultBumper = Bumper(Ports.PORT8)
@@ -86,14 +87,17 @@ class Bot:
         motor.spin(FORWARD)
 
     def onCatapultBumperPressed(self):
-        self.catapult.stop()
+        self.catapultRight.stop()
+        self.catapultLeft.stop()
 
     def setupCatapult(self):
-        self.catapult.set_velocity(50)
-        self.catapult.set_stopping(HOLD)
+        self.catapultRight.set_velocity(50)
+        self.catapultLeft.set_velocity(50)
+        self.catapultRight.set_stopping(HOLD)
+        self.catapultLeft.set_stopping(HOLD)
         self.catapultBumper.pressed(self.onCatapultBumperPressed)
-        self.controller.buttonLUp.pressed(self.windCatapult)
-        self.controller.buttonLDown.pressed(self.releaseCatapult)
+        self.controller.buttonLDown.pressed(self.windCatapult)
+        self.controller.buttonLUp.pressed(self.releaseCatapult)
 
     def calibrate(self, waitToFinish: bool = False):
         self.print("Calibrating...")
@@ -129,16 +133,19 @@ class Bot:
 
     def releaseCatapult(self): # Down Button
         if self.catapultDown == True:
-            self.catapult.spin_for(FORWARD, 360, DEGREES)
+            self.catapultRight.spin_for(FORWARD, 360, DEGREES, wait=False)
+            self.catapultLeft.spin_for(FORWARD, 360, DEGREES)
             self.checkCatapultDown()
 
     def windCatapult(self):  # Up Button
         while not self.catapultDown:
-            self.catapult.spin(FORWARD)
+            self.catapultRight.spin(FORWARD)
+            self.catapultLeft.spin(FORWARD)
             self.checkCatapultDown()
             wait(100, MSEC)
-            print("hi")
-        self.catapult.stop(HOLD)
+        self.catapultRight.stop(HOLD)
+        self.catapultLeft.stop(HOLD)
+ 
  
     def windTensioner(self):
         self.tensioner.set_stopping(HOLD)
@@ -160,7 +167,8 @@ class Bot:
         self.setupDriveMotor(self.wheelCenter)
 
     def stopAll(self):
-        self.catapult.stop(HOLD)    
+        self.catapultRight.stop(HOLD)    
+        self.catapultLeft.stop(HOLD)    
         self.tensioner.stop(COAST)
 
     def updateDriveMotor(self, drive: Motor, velocity: float, joystickTolerance: int):
