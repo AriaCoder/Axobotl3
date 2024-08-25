@@ -27,6 +27,7 @@ class Bot:
         self.setupEyes()
         self.setupSensor()
         self.setupIntake()
+        self.setupStop()
 
     def setupPortMappings(self):    
         # Gear ratio is 2:1
@@ -101,23 +102,10 @@ class Bot:
 
 
     def intakeForward(self):
-        if not self.spinningFwd:
-            self.spinningFwd = True
-            self.spinningRev = False
             self.intake.spin(FORWARD)
-        else:
-            self.spinningFwd = False
-            self.intake.stop(HOLD)
 
     def intakeReverse(self):
-        print("hi")
-        if not self.spinningRev:
-            self.spinningRev = True
-            self.spinningFwd = False
-            self.intake.spin(REVERSE)
-        else:
-            self.spinningRev = False
-            self.intake.stop(HOLD)
+        self.intake.spin(REVERSE)
 
     def calibrate(self, waitToFinish: bool = False):
         self.print("Calibrating...")
@@ -170,6 +158,9 @@ class Bot:
         self.setupDriveMotor(self.wheelLeft)
         self.setupDriveMotor(self.wheelRight)
         self.setupDriveMotor(self.wheelCenter)
+
+    def setupStop(self):
+        self.controller.buttonFUp.pressed(self.stopAll)
 
     def stopAll(self):
         self.catapultRight.stop(HOLD)    
