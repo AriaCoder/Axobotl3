@@ -12,6 +12,8 @@ class Bot:
         self.penColor = Color.WHITE
         self.cancelCalibration = False
         self.catapultDown = False
+        self.spinningFwd = False
+        self.spinningRev = False
 
     def setup(self):
         self.brain = Brain()
@@ -22,9 +24,9 @@ class Bot:
         self.setupDrivetrain()
         self.setupController()
         self.setupCatapult()
-        self.setupTensioner()
         self.setupEyes()
         self.setupSensor()
+        self.setupIntake()
 
     def setupPortMappings(self):    
         # Gear ratio is 2:1
@@ -35,21 +37,14 @@ class Bot:
         self.catapultLeft = Motor(Ports.PORT3, True)
         self.eyeLeft = ColorSensor(Ports.PORT2)
         self.eyeRight = ColorSensor(Ports.PORT5)
-        self.catapultBumper = Bumper(Ports.PORT8)
-        self.tensioner = Motor(Ports.PORT9)
+        self.intake = Motor(Ports.PORT1)
         self.catapultSensor = Distance(Ports.PORT2)
 
     def setupEyes(self):
         self.eyeLeft.set_light_power(100)
         self.eyeRight.set_light_power(100)
 
-    def setupTensioner(self):
-        self.tensioner.set_velocity(100, PERCENT)
-        self.tensioner.set_max_torque(100, PERCENT)
-        self.controller.buttonRUp.pressed(self.windTensioner)
-        self.controller.buttonRDown.pressed(self.unwindTensioner)
 
-        
     def setupController(self):
         # Delay to make sure events are registered correctly.
         wait(15, MSEC)
@@ -95,9 +90,34 @@ class Bot:
         self.catapultLeft.set_velocity(50)
         self.catapultRight.set_stopping(HOLD)
         self.catapultLeft.set_stopping(HOLD)
-        self.catapultBumper.pressed(self.onCatapultBumperPressed)
         self.controller.buttonLDown.pressed(self.windCatapult)
         self.controller.buttonLUp.pressed(self.releaseCatapult)
+
+
+    def setupIntake(self):
+        self.intake.set_velocity(100)
+        self.controller.buttonRDown.pressed(self.intakeForward)
+        self.controller.buttonRUp.pressed(self.intakeReverse)
+
+
+    def intakeForward(self):
+        if not self.spinningFwd:
+            self.spinningFwd = True
+            self.spinningRev = False
+            self.intake.spin(FORWARD)
+        else:
+            self.spinningFwd = False
+            self.intake.stop(HOLD)
+
+    def intakeReverse(self):
+        print("hi")
+        if not self.spinningRev:
+            self.spinningRev = True
+            self.spinningFwd = False
+            self.intake.spin(REVERSE)
+        else:
+            self.spinningRev = False
+            self.intake.stop(HOLD)
 
     def calibrate(self, waitToFinish: bool = False):
         self.print("Calibrating...")
@@ -145,21 +165,6 @@ class Bot:
             wait(100, MSEC)
         self.catapultRight.stop(HOLD)
         self.catapultLeft.stop(HOLD)
- 
- 
-    def windTensioner(self):
-        self.tensioner.set_stopping(HOLD)
-        while self.controller.buttonRUp.pressing():
-            self.tensioner.spin(FORWARD)
-        else:
-            self.tensioner.stop(HOLD)
-
-    def unwindTensioner(self):
-        self.tensioner.set_stopping(COAST)
-        while self.controller.buttonRDown.pressing():
-            self.tensioner.spin(REVERSE)
-        else:
-            self.tensioner.stop(COAST)
 
     def setupDrivetrain(self):
         self.setupDriveMotor(self.wheelLeft)
@@ -169,7 +174,7 @@ class Bot:
     def stopAll(self):
         self.catapultRight.stop(HOLD)    
         self.catapultLeft.stop(HOLD)    
-        self.tensioner.stop(COAST)
+        self.intake.stop(HOLD)
 
     def updateDriveMotor(self, drive: Motor, velocity: float, joystickTolerance: int):
         velocity = velocity**3
