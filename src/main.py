@@ -10,10 +10,9 @@ class Bot:
         self.isScreenSetup = False
         self.screenColor = Color.BLUE
         self.penColor = Color.WHITE
-        self.cancelCalibration = False
-        self.catapultDown = False
         self.spinningFwd = False
         self.spinningRev = False
+        self.cancelCalibration = False
 
     def setup(self):
         self.brain = Brain()
@@ -132,25 +131,23 @@ class Bot:
     def setupSensor(self):
         pass
 
-    def checkCatapultDown(self):
-        if self.catapultSensor.object_distance(MM) < 30:
-            self.catapultDown = True
-            self.print("DOWN!")
-        else:
-            self.catapultDown = False
+    def isCatapultDown(self):
+        return self.catapultSensor.object_distance(MM) < 30
 
     def releaseCatapult(self): # Down Button
-        if self.catapultDown == True:
-            self.catapultRight.spin_for(FORWARD, 360, DEGREES, wait=False)
-            self.catapultLeft.spin_for(FORWARD, 360, DEGREES)
-            self.checkCatapultDown()
+        if self.isCatapultDown():
+            self.catapultRight.spin_for(FORWARD, 180, DEGREES, wait=False)
+            self.catapultLeft.spin_for(FORWARD, 180, DEGREES)
+            self.isCatapultDown()
 
     def windCatapult(self):  # Up Button
-        while not self.catapultDown:
+        while not self.isCatapultDown():
             self.catapultRight.spin(FORWARD)
             self.catapultLeft.spin(FORWARD)
-            self.checkCatapultDown()
             wait(100, MSEC)
+        # Spinning the catapult a little more because sensor placement can't go lower
+        self.catapultRight.spin_for(FORWARD, 90, DEGREES, wait = False)
+        self.catapultLeft.spin_for(FORWARD, 90, DEGREES)
         self.catapultRight.stop(HOLD)
         self.catapultLeft.stop(HOLD)
 
