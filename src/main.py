@@ -90,21 +90,25 @@ class Bot:
         self.catapultLeft.set_velocity(50)
         self.catapultRight.set_stopping(HOLD)
         self.catapultLeft.set_stopping(HOLD)
-        self.controller.buttonLDown.pressed(self.windCatapult)
-        self.controller.buttonLUp.pressed(self.releaseCatapult)
+        self.controller.buttonRDown.pressed(self.windCatapult)
+        self.controller.buttonRUp.pressed(self.releaseCatapult)
 
 
     def setupIntake(self):
         self.intake.set_velocity(100)
-        self.controller.buttonRDown.pressed(self.intakeForward)
-        self.controller.buttonRUp.pressed(self.intakeReverse)
+        self.controller.buttonLUp.pressed(self.intakeForward)
+        self.controller.buttonLDown.pressed(self.intakeReverse)
 
 
     def intakeForward(self):
-            self.intake.spin(FORWARD)
+        if self.isCatapultDown(): 
+            self.intake.spin(REVERSE)
+        else:
+            self.intake.spin(REVERSE)
+            self.windCatapult()
 
     def intakeReverse(self):
-        self.intake.spin(REVERSE)
+        self.intake.spin(FORWARD)
 
     def calibrate(self, waitToFinish: bool = False):
         self.print("Calibrating...")
@@ -139,6 +143,7 @@ class Bot:
             self.catapultRight.spin_for(FORWARD, 180, DEGREES, wait=False)
             self.catapultLeft.spin_for(FORWARD, 180, DEGREES)
             self.isCatapultDown()
+            self.windCatapult()
 
     def windCatapult(self):  # Up Button
         while not self.isCatapultDown():
@@ -146,8 +151,8 @@ class Bot:
             self.catapultLeft.spin(FORWARD)
             wait(100, MSEC)
         # Spinning the catapult a little more because sensor placement can't go lower
-        self.catapultRight.spin_for(FORWARD, 90, DEGREES, wait = False)
-        self.catapultLeft.spin_for(FORWARD, 90, DEGREES)
+        self.catapultRight.spin_for(FORWARD, 60, DEGREES, wait = False)
+        self.catapultLeft.spin_for(FORWARD, 60, DEGREES)
         self.catapultRight.stop(HOLD)
         self.catapultLeft.stop(HOLD)
 
