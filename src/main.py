@@ -32,7 +32,7 @@ class Bot:
         # Gear ratio is 2:1
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
-        self.wheelCenter = Motor(Ports.PORT10, 2.0, True)
+#        self.wheelCenter = Motor(Ports.PORT10, 2.0, True)
         self.catapultRight = Motor(Ports.PORT11)
         self.catapultLeft = Motor(Ports.PORT3, True)
         self.eyeLeft = ColorSensor(Ports.PORT2)
@@ -142,6 +142,8 @@ class Bot:
         if self.isCatapultDown():
             self.catapultRight.spin_for(FORWARD, 180, DEGREES, wait=False)
             self.catapultLeft.spin_for(FORWARD, 180, DEGREES)
+            if self.controller.buttonEUp.pressing():
+                return
             self.isCatapultDown()
             self.windCatapult()
 
@@ -159,7 +161,7 @@ class Bot:
     def setupDrivetrain(self):
         self.setupDriveMotor(self.wheelLeft)
         self.setupDriveMotor(self.wheelRight)
-        self.setupDriveMotor(self.wheelCenter)
+ #       self.setupDriveMotor(self.wheelCenter)
 
     def setupStop(self):
         self.controller.buttonFUp.pressed(self.stopAll)
@@ -225,7 +227,7 @@ class Bot:
             strafePercent = self.controller.axisB.position() + self.controller.axisC.position()
             self.updateDriveMotor(self.wheelRight, self.controller.axisD.position(), 5)
             self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
-            self.updateDriveMotor(self.wheelCenter, strafePercent, 5)
+ #           self.updateDriveMotor(self.wheelCenter, strafePercent, 5)
             sleep(100)
         #    print(str(self.eyeLeft.color()))
         #   print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))            
