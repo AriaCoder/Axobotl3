@@ -24,7 +24,6 @@ class Bot:
         self.setupController()
         self.setupCatapult()
         self.setupEyes()
-        self.setupSensor()
         self.setupIntake()
         self.setupStop()
 
@@ -37,7 +36,8 @@ class Bot:
         self.catapultLeft = Motor(Ports.PORT3, True)
         self.eyeLeft = ColorSensor(Ports.PORT2)
         self.eyeRight = ColorSensor(Ports.PORT5)
-        self.intake = Motor(Ports.PORT1)
+        self.intakeRight = Motor(Ports.PORT1)
+        self.intakeLeft = Motor(Ports.PORT4, True)
         self.catapultSensor = Distance(Ports.PORT2)
 
     def setupEyes(self):
@@ -95,45 +95,24 @@ class Bot:
 
 
     def setupIntake(self):
-        self.intake.set_velocity(100)
+        self.intakeRight.set_velocity(100)
+        self.intakeLeft.set_velocity(100)
         self.controller.buttonLUp.pressed(self.intakeForward)
         self.controller.buttonLDown.pressed(self.intakeReverse)
 
 
     def intakeForward(self):
         if self.isCatapultDown(): 
-            self.intake.spin(REVERSE)
+            self.intakeRight.spin(REVERSE)
+            self.intakeLeft.spin(REVERSE)
         else:
-            self.intake.spin(REVERSE)
+            self.intakeRight.spin(REVERSE)
+            self.intakeLeft.spin(REVERSE)
             self.windCatapult()
 
     def intakeReverse(self):
-        self.intake.spin(FORWARD)
-
-    def calibrate(self, waitToFinish: bool = False):
-        self.print("Calibrating...")
-        self.inertial.calibrate()
-        countdown = 3000/50  
-        while (self.inertial.is_calibrating()
-                and countdown > 0
-                and not self.cancelCalibration):
-            wait(50, MSEC)
-            countdown = countdown - 1
-        if self.cancelCalibration:   
-            self.print("Cancelled Calibration!")
-            return False
-        elif countdown > 0 and not self.inertial.is_calibrating():
-            self.print("Calibrated")
-            self.brain.play_sound(SoundType.TADA)
-            self.isCalibrated = True
-            return True
-        while (waitToFinish
-              and self.inertial.is_calibrating() 
-              and not self.cancelCalibration):
-            wait(100, MSEC)
-
-    def setupSensor(self):
-        pass
+        self.intakeLeft.spin(FORWARD)
+        self.intakeRight.spin(FORWARD)
 
     def isCatapultDown(self):
         return self.catapultSensor.object_distance(MM) < 30
@@ -169,7 +148,8 @@ class Bot:
     def stopAll(self):
         self.catapultRight.stop(HOLD)    
         self.catapultLeft.stop(HOLD)    
-        self.intake.stop(HOLD)
+        self.intakeRight.stop(HOLD)
+        self.intakeLeft.stop(HOLD)
 
     def updateDriveMotor(self, drive: Motor, velocity: float, joystickTolerance: int):
         velocity = velocity**3
@@ -184,27 +164,6 @@ class Bot:
         self.runManual()
         #self.runAuto()
 
-    def runAuto(self):
-        self.calibrate(True)
-        self.print("Extreme Axolotls")
-        self.driveToLine()
-    
-    def driveToLine(self, headinginDeg: float = 0.0):
-        notBlack = True
-        while notBlack:
-            sleep(1000)
-            if self.eyeRight.brightness() < 20:
-                self.wheelRight.set_velocity(0, PERCENT)
-                notBlack = False
-            else: self.wheelRight.set_velocity(30, PERCENT)
-            if self.eyeLeft.brightness() < 20:
-                self.wheelLeft.set_velocity(0, PERCENT)
-                notBlack = False
-            else: self.wheelLeft.set_velocity(30, PERCENT)
-            self.rotateToPlace
-        self.wheelLeft.set_velocity(0, PERCENT)
-        self.wheelRight.set_velocity(0, PERCENT)
-    
     def wiggleToPlace(self, headinginDeg: float = 0.0):
         error = (self.inertial.heading() - headinginDeg)/180
         self.wheelRight.set_velocity(30 * (1 + error), PERCENT)
