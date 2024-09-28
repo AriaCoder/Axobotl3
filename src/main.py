@@ -31,7 +31,7 @@ class Bot:
         # Gear ratio is 2:1
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
-#        self.wheelCenter = Motor(Ports.PORT10, 2.0, True)
+#       self.wheelCenter = Motor(Ports.PORT10, 2.0, True)
         self.catapultRight = Motor(Ports.PORT11)
         self.catapultLeft = Motor(Ports.PORT3, True)
         self.eyeLeft = ColorSensor(Ports.PORT2)
@@ -39,6 +39,8 @@ class Bot:
         self.intakeRight = Motor(Ports.PORT1)
         self.intakeLeft = Motor(Ports.PORT4, True)
         self.catapultSensor = Distance(Ports.PORT2)
+        self.LEDLeft = Touchled(Ports. PORT10)
+        self.LEDRight = Touchled(Ports. PORT9)
 
     def setupEyes(self):
         self.eyeLeft.set_light_power(100)
@@ -82,7 +84,8 @@ class Bot:
         motor.spin(FORWARD)
 
     def onCatapultBumperPressed(self):
-        self.catapultRight.stop()
+        self.set_color(Color.GREEN)
+        self.set_color(Color.GREEN)
         self.catapultLeft.stop()
 
     def setupCatapult(self):
