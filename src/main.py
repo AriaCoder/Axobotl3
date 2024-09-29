@@ -41,6 +41,7 @@ class Bot:
         self.catapultSensor = Distance(Ports.PORT2)
         self.LEDLeft = Touchled(Ports. PORT10)
         self.LEDRight = Touchled(Ports. PORT9)
+        self.backBumper = Bumper(Ports.PORT8)
 
     def setupEyes(self):
         self.eyeLeft.set_light_power(100)
@@ -83,11 +84,6 @@ class Bot:
         motor.set_max_torque(100, PERCENT)
         motor.spin(FORWARD)
 
-    def onCatapultBumperPressed(self):
-        self.set_color(Color.GREEN)
-        self.set_color(Color.GREEN)
-        self.catapultLeft.stop()
-
     def setupCatapult(self):
         self.catapultRight.set_velocity(50)
         self.catapultLeft.set_velocity(50)
@@ -95,6 +91,8 @@ class Bot:
         self.catapultLeft.set_stopping(HOLD)
         self.controller.buttonRDown.pressed(self.windCatapult)
         self.controller.buttonRUp.pressed(self.releaseCatapult)
+        self.backBumper.pressed(self.onBumperPressed)
+        self.backBumper.released(self.onBumperReleased)
 
 
     def setupIntake(self):
@@ -119,6 +117,15 @@ class Bot:
 
     def isCatapultDown(self):
         return self.catapultSensor.object_distance(MM) < 30
+    
+
+    def onBumperPressed(self):
+        if self.backBumper.pressing():
+            self.brain.play_sound(SoundType.TADA)
+            self.LEDLeft.set_color(Color.GREEN)
+
+    def onBumperReleased(self):
+        self.LEDLeft.off()
 
     def releaseCatapult(self): # Down Button
         if self.isCatapultDown():
