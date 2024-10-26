@@ -32,8 +32,8 @@ class Bot:
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
 #       self.wheelCenter = Motor(Ports.PORT10, 2.0, True)
-        self.catapultRight = Motor(Ports.PORT11)
-        self.catapultLeft = Motor(Ports.PORT3, True)
+        self.catapultRight = Motor(Ports.PORT11,True)
+        self.catapultLeft = Motor(Ports.PORT3)
         self.eyeLeft = ColorSensor(Ports.PORT2)
         self.eyeRight = ColorSensor(Ports.PORT5)
         self.intakeRight = Motor(Ports.PORT1)
@@ -116,7 +116,7 @@ class Bot:
         self.intakeRight.spin(FORWARD)
 
     def isCatapultDown(self):
-        return self.catapultSensor.object_distance(MM) < 30
+        return self.catapultSensor.object_distance(MM) < 80
     
 
     def onBumperPressed(self):

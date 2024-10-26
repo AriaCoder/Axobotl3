@@ -1,7 +1,7 @@
 {
 	// WARNING: Do NOT change the below stubPath unless you know what you're doing.
 	// Changing it may make all the vex related keywords unrecognized by VS Code
-	"python.analysis.stubPath": "/Users/vasilisa/Library/Application Support/Code/User/globalStorage/vexrobotics.vexcode/sdk/python/IQ2/IQ2_1_0_0_19/vexiq2/stubs",
+	"python.analysis.stubPath": "/Users/aria/Library/Application Support/Code/User/globalStorage/vexrobotics.vexcode/sdk/python/IQ2/IQ2_1_0_0_19/vexiq2/stubs",
 	"python.analysis.diagnosticMode": "workspace",
 	"python.analysis.typeCheckingMode": "basic"
 }
