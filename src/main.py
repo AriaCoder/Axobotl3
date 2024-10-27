@@ -89,52 +89,49 @@ class Bot:
         self.controller.buttonLUp.pressed(self.intakeForward)
         self.controller.buttonLDown.pressed(self.intakeReverse)
 
+    def spinIntake(self, direction: DirectionType.DirectionType):
+        self.intakeRight.spin(direction) 
+        self.intakeLeft.spin(direction)
+
+    def stopIntake(self, mode = HOLD):
+        self.intakeRight.stop(mode)
+        self.intakeLeft.stop(mode)
+        
     def intakeForward(self):
-        self.isCatapultDown()
-        if self.isCatapultDown(): # Is the catapult down?
-            self.isBallAtIntake() #Checks for ball in intake
+        if not self.isCatapultDown(): # Catapult is up... somehow
+            self.spinIntake(REVERSE)
+            self.windCatapult() # Lower catapult
+
+        while not self.isBallAtIntake(): #Until there is a ball in the intake, spin intake
+                print("In the loop")
+                self.spinIntake(REVERSE)
+                wait(100,MSEC)
+
+        print (self.isBallAtIntake()) # There is a ball in the intake now. Checking for catapult..
+        if self.isBallOnCatapult(): #Stop the intake if there is a ball in the catapult already.
+            print(self.isBallOnCatapult())
+            self.stopIntake()
+
+        else: # No ball in catapult?
+            while not self.isBallOnCatapult(): #Until there is a ball in the catapult, spin intake
+                self.spinIntake(REVERSE)
+                wait(100,MSEC)
+
             while not self.isBallAtIntake(): #Until there is a ball in the intake, spin intake
-                    print("In the loop")
-                    self.intakeRight.spin(REVERSE)
-                    self.intakeLeft.spin(REVERSE)
-                    wait(100,MSEC)
-
-            print (self.isBallAtIntake()) # There is a ball in the intake now. Checking for catapult..
-            if self.isBallOnCatapult(): #Stop the intake if there is a ball in the catapult already.
-                print(self.isBallOnCatapult())
-                self.intakeRight.stop()
-                self.intakeLeft.stop()
-            else: # No ball in catapult?
-                while not self.isBallOnCatapult(): #Until there is a ball in the catapult, spin intake
-                    self.intakeRight.spin(REVERSE)
-                    self.intakeLeft.spin(REVERSE)
-                    wait(100,MSEC)
-
-                while not self.isBallAtIntake(): #Until there is a ball in the intake, spin intake
-                    self.intakeRight.spin(REVERSE)
-                    self.intakeLeft.spin(REVERSE)
-                    wait(100,MSEC)
-                self.intakeRight.stop()
-                self.intakeLeft.stop()
-                
-                while self.isBallOnCatapult():
-                    wait(100, MSEC)
-                if self.isCatapultDown():
-                    self.intakeRight.spin(REVERSE)
-                    self.intakeLeft.spin(REVERSE)
-                else:
-                    self.windCatapult()
-                    self.intakeRight.spin(REVERSE)
-                    self.intakeLeft.spin(REVERSE)
-                
-        else: # The catapult is up... somehow
-            self.intakeRight.spin(REVERSE) 
-            self.intakeLeft.spin(REVERSE)
-            self.windCatapult() #lower the catapul
+                self.spinIntake(REVERSE)
+                wait(100,MSEC)
+            self.stopIntake()
+            
+            while self.isBallOnCatapult():
+                wait(100, MSEC)
+            if self.isCatapultDown():
+                self.spinIntake(REVERSE)
+            else:
+                self.windCatapult()
+                self.spinIntake(REVERSE)
 
     def intakeReverse(self):
-        self.intakeLeft.spin(FORWARD)
-        self.intakeRight.spin(FORWARD)
+        self.spinIntake(FORWARD)
 
     def isCatapultDown(self):
         return self.catapultSensor.object_distance(MM) < 80
@@ -182,9 +179,8 @@ class Bot:
 
     def stopAll(self):
         self.catapultRight.stop(HOLD)    
-        self.catapultLeft.stop(HOLD)    
-        self.intakeRight.stop(HOLD)
-        self.intakeLeft.stop(HOLD)
+        self.catapultLeft.stop(HOLD) 
+        self.stopIntake(HOLD)   
 
     def updateDriveMotor(self, drive: Motor, velocity: float, joystickTolerance: int):
         # Cubic function helps improve drive responsiveness
