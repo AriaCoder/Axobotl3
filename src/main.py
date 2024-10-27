@@ -21,17 +21,16 @@ class Bot:
         self.setupScreen()
         self.setupPortMappings()
         self.setupDrivetrain()
-        self.setupController()
         self.setupCatapult()
         self.setupIntake()
         self.setupStop()
+        wait(15, MSEC)  # Just make sure events have time to get setup
 
     def setupPortMappings(self):    
-        # Gear ratio is 2:1
+        # Drivetrain gear ratio is 2:1
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
         self.intakeSensor = Distance(Ports.PORT6)
-#       self.wheelCenter = Motor(Ports.PORT10, 2.0, True)
         self.catapultRight = Motor(Ports.PORT11,True)
         self.catapultLeft = Motor(Ports.PORT3)
         self.topSensor = Distance(Ports.PORT5)
@@ -41,12 +40,6 @@ class Bot:
         self.LEDLeft = Touchled(Ports. PORT10)
         self.LEDRight = Touchled(Ports. PORT9)
         self.backBumper = Bumper(Ports.PORT8)
-
-
-
-    def setupController(self):
-        # Delay to make sure events are registered correctly.
-        wait(15, MSEC)
 
     def setupScreen(self):
         if not self.isScreenSetup:
@@ -90,43 +83,41 @@ class Bot:
         self.backBumper.pressed(self.onBumperPressed)
         self.backBumper.released(self.onBumperReleased)
 
-
     def setupIntake(self):
         self.intakeRight.set_velocity(100)
         self.intakeLeft.set_velocity(100)
         self.controller.buttonLUp.pressed(self.intakeForward)
         self.controller.buttonLDown.pressed(self.intakeReverse)
 
-
     def intakeForward(self):
         self.isCatapultDown()
         if self.isCatapultDown(): # Is the catapult down?
-            self.isBallinIntake() #Checks for ball in intake
-            while not self.isBallinIntake(): #Until there is a ball in the intake, spin intake
+            self.isBallAtIntake() #Checks for ball in intake
+            while not self.isBallAtIntake(): #Until there is a ball in the intake, spin intake
                     print("In the loop")
                     self.intakeRight.spin(REVERSE)
                     self.intakeLeft.spin(REVERSE)
                     wait(100,MSEC)
 
-            print (self.isBallinIntake()) # There is a ball in the intake now. Checking for catapult..
-            if self.isBallinCatapult(): #Stop the intake if there is a ball in the catapult already.
-                print(self.isBallinCatapult())
+            print (self.isBallAtIntake()) # There is a ball in the intake now. Checking for catapult..
+            if self.isBallOnCatapult(): #Stop the intake if there is a ball in the catapult already.
+                print(self.isBallOnCatapult())
                 self.intakeRight.stop()
                 self.intakeLeft.stop()
             else: # No ball in catapult?
-                while not self.isBallinCatapult(): #Until there is a ball in the catapult, spin intake
+                while not self.isBallOnCatapult(): #Until there is a ball in the catapult, spin intake
                     self.intakeRight.spin(REVERSE)
                     self.intakeLeft.spin(REVERSE)
                     wait(100,MSEC)
 
-                while not self.isBallinIntake(): #Until there is a ball in the intake, spin intake
+                while not self.isBallAtIntake(): #Until there is a ball in the intake, spin intake
                     self.intakeRight.spin(REVERSE)
                     self.intakeLeft.spin(REVERSE)
                     wait(100,MSEC)
                 self.intakeRight.stop()
                 self.intakeLeft.stop()
                 
-                while self.isBallinCatapult():
+                while self.isBallOnCatapult():
                     wait(100, MSEC)
                 if self.isCatapultDown():
                     self.intakeRight.spin(REVERSE)
@@ -147,13 +138,12 @@ class Bot:
 
     def isCatapultDown(self):
         return self.catapultSensor.object_distance(MM) < 80
-    
-    def isBallinIntake(self):
+
+    def isBallAtIntake(self):
         return self.intakeSensor.object_distance(MM) < 100
-    
-    def isBallinCatapult(self):
+
+    def isBallOnCatapult(self):
         return self.topSensor.object_distance(MM) < 50
-    
 
     def onBumperPressed(self):
         if self.backBumper.pressing():
@@ -186,7 +176,6 @@ class Bot:
     def setupDrivetrain(self):
         self.setupDriveMotor(self.wheelLeft)
         self.setupDriveMotor(self.wheelRight)
- #       self.setupDriveMotor(self.wheelCenter)
 
     def setupStop(self):
         self.controller.buttonFUp.pressed(self.stopAll)
@@ -198,45 +187,25 @@ class Bot:
         self.intakeLeft.stop(HOLD)
 
     def updateDriveMotor(self, drive: Motor, velocity: float, joystickTolerance: int):
+        # Cubic function helps improve drive responsiveness
         velocity = velocity**3
         velocity = velocity/10000
-        if math.fabs(velocity) > joystickTolerance:
-            drive.set_velocity(velocity, PERCENT)
-        else:
-            drive.set_velocity(0, PERCENT)
-
-    def run(self):
-        self.setup()
-        self.runManual()
-        #self.runAuto()
-
-    def wiggleToPlace(self, headinginDeg: float = 0.0):
-        error = (self.inertial.heading() - headinginDeg)/180
-        self.wheelRight.set_velocity(30 * (1 + error), PERCENT)
-        self.wheelLeft.set_velocity(30 * (1 - error), PERCENT)
-        while error < 30 and error > 330:
-            wait (1)
-
-    def rotateToPlace(self, headinginDeg: float = 0.0):
-        error = (headinginDeg - self.inertial.heading())/180
-        self.wheelRight.set_velocity(20 * (1 + error), PERCENT)
-        self.wheelLeft.set_velocity(20 * (-1 - error), PERCENT)
-        while error > 30 and error < 330:
-            wait (1)
+        if math.fabs(velocity) <= joystickTolerance:
+            velocity = 0
+        drive.set_velocity(velocity, PERCENT)
 
     def runManual(self):
         self.isRunning = True
         self.print("Extreme Axolotls!")
         self.print("Ready")
         while self.isRunning:
-            strafePercent = self.controller.axisB.position() + self.controller.axisC.position()
             self.updateDriveMotor(self.wheelRight, self.controller.axisD.position(), 5)
             self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
- #           self.updateDriveMotor(self.wheelCenter, strafePercent, 5)
-            sleep(100)
-        #    print(str(self.eyeLeft.color()))
-        #   print(str(self.eyeLeft.brightness())+  ", " + str(self.eyeRight.brightness()))            
+            sleep(20)
 
+    def run(self):
+        self.setup()
+        self.runManual()
 
 # Where it all begins!    
 bot = Bot()
