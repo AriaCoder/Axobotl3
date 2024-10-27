@@ -23,7 +23,6 @@ class Bot:
         self.setupDrivetrain()
         self.setupController()
         self.setupCatapult()
-        self.setupEyes()
         self.setupIntake()
         self.setupStop()
 
@@ -31,11 +30,11 @@ class Bot:
         # Gear ratio is 2:1
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
+        self.intakeSensor = Distance(Ports.PORT6)
 #       self.wheelCenter = Motor(Ports.PORT10, 2.0, True)
         self.catapultRight = Motor(Ports.PORT11,True)
         self.catapultLeft = Motor(Ports.PORT3)
-        self.eyeLeft = ColorSensor(Ports.PORT2)
-        self.eyeRight = ColorSensor(Ports.PORT5)
+        self.topSensor = Distance(Ports.PORT5)
         self.intakeRight = Motor(Ports.PORT1)
         self.intakeLeft = Motor(Ports.PORT4, True)
         self.catapultSensor = Distance(Ports.PORT2)
@@ -43,9 +42,6 @@ class Bot:
         self.LEDRight = Touchled(Ports. PORT9)
         self.backBumper = Bumper(Ports.PORT8)
 
-    def setupEyes(self):
-        self.eyeLeft.set_light_power(100)
-        self.eyeRight.set_light_power(100)
 
 
     def setupController(self):
@@ -103,13 +99,47 @@ class Bot:
 
 
     def intakeForward(self):
-        if self.isCatapultDown(): 
-            self.intakeRight.spin(REVERSE)
+        self.isCatapultDown()
+        if self.isCatapultDown(): # Is the catapult down?
+            self.isBallinIntake() #Checks for ball in intake
+            while not self.isBallinIntake(): #Until there is a ball in the intake, spin intake
+                    print("In the loop")
+                    self.intakeRight.spin(REVERSE)
+                    self.intakeLeft.spin(REVERSE)
+                    wait(100,MSEC)
+
+            print (self.isBallinIntake()) # There is a ball in the intake now. Checking for catapult..
+            if self.isBallinCatapult(): #Stop the intake if there is a ball in the catapult already.
+                print(self.isBallinCatapult())
+                self.intakeRight.stop()
+                self.intakeLeft.stop()
+            else: # No ball in catapult?
+                while not self.isBallinCatapult(): #Until there is a ball in the catapult, spin intake
+                    self.intakeRight.spin(REVERSE)
+                    self.intakeLeft.spin(REVERSE)
+                    wait(100,MSEC)
+
+                while not self.isBallinIntake(): #Until there is a ball in the intake, spin intake
+                    self.intakeRight.spin(REVERSE)
+                    self.intakeLeft.spin(REVERSE)
+                    wait(100,MSEC)
+                self.intakeRight.stop()
+                self.intakeLeft.stop()
+                
+                while self.isBallinCatapult():
+                    wait(100, MSEC)
+                if self.isCatapultDown():
+                    self.intakeRight.spin(REVERSE)
+                    self.intakeLeft.spin(REVERSE)
+                else:
+                    self.windCatapult()
+                    self.intakeRight.spin(REVERSE)
+                    self.intakeLeft.spin(REVERSE)
+                
+        else: # The catapult is up... somehow
+            self.intakeRight.spin(REVERSE) 
             self.intakeLeft.spin(REVERSE)
-        else:
-            self.intakeRight.spin(REVERSE)
-            self.intakeLeft.spin(REVERSE)
-            self.windCatapult()
+            self.windCatapult() #lower the catapul
 
     def intakeReverse(self):
         self.intakeLeft.spin(FORWARD)
@@ -117,6 +147,12 @@ class Bot:
 
     def isCatapultDown(self):
         return self.catapultSensor.object_distance(MM) < 80
+    
+    def isBallinIntake(self):
+        return self.intakeSensor.object_distance(MM) < 100
+    
+    def isBallinCatapult(self):
+        return self.topSensor.object_distance(MM) < 50
     
 
     def onBumperPressed(self):
