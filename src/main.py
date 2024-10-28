@@ -86,7 +86,7 @@ class Bot:
     def setupIntake(self):
         self.intakeRight.set_velocity(100)
         self.intakeLeft.set_velocity(100)
-        self.controller.buttonLUp.pressed(self.intakeForward)
+        self.controller.buttonLUp.pressed(self.runIntake)
         self.controller.buttonLDown.pressed(self.intakeReverse)
 
     def spinIntake(self, direction: DirectionType.DirectionType):
@@ -97,12 +97,12 @@ class Bot:
         self.intakeRight.stop(mode)
         self.intakeLeft.stop(mode)
         
-    def intakeForward(self):
+    def runIntake(self):    
         if not self.isCatapultDown(): # Catapult is up... somehow
             self.spinIntake(REVERSE)
             self.windCatapult() # Lower catapult
 
-        while not self.isBallAtIntake(): #Until there is a ball in the intake, spin intake
+        while not self.isBallAtIntake(): # Until there is a ball in the intake, spin intake
                 print("In the loop")
                 self.spinIntake(REVERSE)
                 wait(100,MSEC)
@@ -114,11 +114,9 @@ class Bot:
 
         else: # No ball in catapult?
             while not self.isBallOnCatapult(): #Until there is a ball in the catapult, spin intake
-                self.spinIntake(REVERSE)
                 wait(100,MSEC)
 
             while not self.isBallAtIntake(): #Until there is a ball in the intake, spin intake
-                self.spinIntake(REVERSE)
                 wait(100,MSEC)
             self.stopIntake()
             
