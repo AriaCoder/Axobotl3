@@ -80,6 +80,7 @@ class Bot:
         self.catapultLeft.set_stopping(HOLD)
         self.controller.buttonRDown.pressed(self.windCatapult)
         self.controller.buttonRUp.pressed(self.releaseCatapult)
+        self.controller.buttonEUp.pressed(self.runBelt)
         self.backBumper.pressed(self.onBumperPressed)
         self.backBumper.released(self.onBumperReleased)
 
@@ -96,7 +97,7 @@ class Bot:
     def stopIntake(self, mode = HOLD):
         self.intakeRight.stop(mode)
         self.intakeLeft.stop(mode)
-        
+    
     def runIntake(self):    
         if not self.isCatapultDown(): # Catapult is up... somehow
             self.spinIntake(REVERSE)
@@ -130,6 +131,10 @@ class Bot:
 
     def intakeReverse(self):
         self.spinIntake(FORWARD)
+
+    def runBelt(self):
+        self.catapultLeft.spin(REVERSE)
+        self.catapultRight.spin(REVERSE)
 
     def isCatapultDown(self):
         return self.catapultSensor.object_distance(MM) < 80
