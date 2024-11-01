@@ -1,33 +1,63 @@
 # AXOBOTL Python Code
 # Team 4028X Extreme Axolotls
 # 2023-25 VEX IQ Rapid Relay Challenge
-from vex import *
+from vex import * 
 
-
+# Bot is a "base class" inherited (shared) by both DriveBot and AutoBot. All
+# the common stuff goes in the Bot class. Our mentor showed us how inheritance
+# can help keep our code organized. Because VEX doesn't let us create our
+# own python modules to share, we just have to copy 
 class Bot:
     def __init__(self):
-        self.isRunning = False
-        self.isScreenSetup = False
+        self.isRunningNow = False
         self.screenColor = Color.BLUE
         self.penColor = Color.WHITE
-        self.spinningFwd = False
-        self.spinningRev = False
-        self.cancelCalibration = False
+
+    def isRunning(self) -> bool:
+        return self.isRunningNow
 
     def setup(self):
         self.brain = Brain()
         self.inertial = Inertial()
-        self.controller = Controller()
         self.setupScreen()
         self.setupPortMappings()
-        self.setupDrivetrain()
+        self.setupDriveTrain()
+        self.setupEvents()
         self.setupCatapult()
         self.setupIntake()
-        self.setupStop()
+        self.setupSensors()
         wait(15, MSEC)  # Just make sure events have time to get setup
 
+    def setupEvents(self):  # Custom events
+        self.eventBackBumperPressed: Event = Event(self.onBackBumperPressed)
+        self.eventBackBumperReleased: Event = Event(self.onBackBumperReleased)
+        self.eventIntakeBallFound: Event = Event(self.onIntakeBallFound)
+        self.eventIntakeBallLost: Event = Event(self.onIntakeBallLost)
+        self.eventCatapultBallFound: Event = Event(self.onCatapultBallFound)
+        self.eventCatapultBallLost: Event = Event(self.onCatapultBallLost)
+
+    def onBackBumperPressed(self):
+        pass
+
+    def onBackBumperReleased(self):
+        pass
+
+    def onIntakeBallFound(self):
+        if self.isBallOnCatapult():
+            self.stopIntake()
+
+    def onIntakeBallLost(self):
+        pass
+
+    def onCatapultBallFound(self):
+        if self.isBallAtIntake():
+            self.stopIntake()
+
+    def onCatapultBallLost(self):
+        pass
+
     def setupPortMappings(self):    
-        # Drivetrain gear ratio is 2:1
+        # Drive train gear ratio is 2:1
         self.wheelLeft = Motor(Ports.PORT7, 2.0, True)
         self.wheelRight = Motor(Ports.PORT12, 2.0, False)
         self.intakeSensor = Distance(Ports.PORT6)
@@ -42,14 +72,12 @@ class Bot:
         self.backBumper = Bumper(Ports.PORT8)
 
     def setupScreen(self):
-        if not self.isScreenSetup:
-            self.brain.screen.clear_screen()
-            self.brain.screen.set_font(FontType.MONO20)
-            self.brain.screen.set_pen_color(self.penColor)
-            self.brain.screen.set_fill_color(self.screenColor)
-            self.brain.screen.set_cursor(1, 1)
-            self.isScreenSetup = True
-            self.clearScreen()
+        self.brain.screen.clear_screen()
+        self.brain.screen.set_font(FontType.MONO20)
+        self.brain.screen.set_pen_color(self.penColor)
+        self.brain.screen.set_fill_color(self.screenColor)
+        self.brain.screen.set_cursor(1, 1)
+        self.clearScreen()
 
     def clearScreen(self, screenColor = None, penColor = None):
         self.screenColor = self.screenColor if screenColor is None else screenColor
@@ -63,32 +91,26 @@ class Bot:
         self.brain.screen.set_cursor(1, 1)
 
     def print(self, message):
-        self.setupScreen()
         self.brain.screen.print(message)
         self.brain.screen.new_line()
-        print(message)  # For connected terminals
+        print(message)  # For connected console
 
     def setupDriveMotor(self, motor: Motor):
         motor.set_velocity(0, PERCENT)
         motor.set_max_torque(100, PERCENT)
         motor.spin(FORWARD)
 
-    def setupCatapult(self):
-        self.catapultRight.set_velocity(50)
-        self.catapultLeft.set_velocity(50)
+    def setupCatapult(self, velocity: int = 100):
+        self.catapultRight.set_velocity(velocity)
+        self.catapultLeft.set_velocity(velocity)
         self.catapultRight.set_stopping(HOLD)
         self.catapultLeft.set_stopping(HOLD)
-        self.controller.buttonRDown.pressed(self.windCatapult)
-        self.controller.buttonRUp.pressed(self.releaseCatapult)
-        self.controller.buttonEUp.pressed(self.runBelt)
         self.backBumper.pressed(self.onBumperPressed)
         self.backBumper.released(self.onBumperReleased)
 
-    def setupIntake(self):
-        self.intakeRight.set_velocity(100)
-        self.intakeLeft.set_velocity(100)
-        self.controller.buttonLUp.pressed(self.runIntake)
-        self.controller.buttonLDown.pressed(self.intakeReverse)
+    def setupIntake(self, velocity: int = 100):
+        self.intakeRight.set_velocity(velocity)
+        self.intakeLeft.set_velocity(velocity)
 
     def spinIntake(self, direction: DirectionType.DirectionType):
         self.intakeRight.spin(direction) 
@@ -100,34 +122,8 @@ class Bot:
     
     def runIntake(self):    
         if not self.isCatapultDown(): # Catapult is up... somehow
-            self.spinIntake(REVERSE)
             self.windCatapult() # Lower catapult
-
-        while not self.isBallAtIntake(): # Until there is a ball in the intake, spin intake
-                print("In the loop")
-                self.spinIntake(REVERSE)
-                wait(100,MSEC)
-
-        print (self.isBallAtIntake()) # There is a ball in the intake now. Checking for catapult..
-        if self.isBallOnCatapult(): #Stop the intake if there is a ball in the catapult already.
-            print(self.isBallOnCatapult())
-            self.stopIntake()
-
-        else: # No ball in catapult?
-            while not self.isBallOnCatapult(): #Until there is a ball in the catapult, spin intake
-                wait(100,MSEC)
-
-            while not self.isBallAtIntake(): #Until there is a ball in the intake, spin intake
-                wait(100,MSEC)
-            self.stopIntake()
-            
-            while self.isBallOnCatapult():
-                wait(100, MSEC)
-            if self.isCatapultDown():
-                self.spinIntake(REVERSE)
-            else:
-                self.windCatapult()
-                self.spinIntake(REVERSE)
+        self.spinIntake(REVERSE)
 
     def intakeReverse(self):
         self.spinIntake(FORWARD)
@@ -146,21 +142,22 @@ class Bot:
         return self.topSensor.object_distance(MM) < 50
 
     def onBumperPressed(self):
-        if self.backBumper.pressing():
-            self.brain.play_sound(SoundType.TADA)
-            self.LEDLeft.set_color(Color.GREEN)
+        self.brain.play_sound(SoundType.TADA)
+        self.LEDLeft.set_color(Color.GREEN)
+        self.eventBackBumperPressed.broadcast()
 
     def onBumperReleased(self):
         self.LEDLeft.off()
+        self.eventBackBumperReleased.broadcast()
 
-    def releaseCatapult(self): # Down Button
+    def releaseCatapult(self, cancelRewind = None): # Down Button
         if self.isCatapultDown():
             self.catapultRight.spin_for(FORWARD, 180, DEGREES, wait=False)
             self.catapultLeft.spin_for(FORWARD, 180, DEGREES)
-            if self.controller.buttonEUp.pressing():
-                return
-            self.isCatapultDown()
-            self.windCatapult()
+            # cancelWinding lets the caller of releaseCatapult() know
+            # if winding should be cancelled (keeps tension off rubber bands)
+            if (cancelRewind is None or not cancelRewind()):
+                self.windCatapult()
 
     def windCatapult(self):  # Up Button
         while not self.isCatapultDown():
@@ -173,39 +170,107 @@ class Bot:
         self.catapultRight.stop(HOLD)
         self.catapultLeft.stop(HOLD)
 
-    def setupDrivetrain(self):
+    def setupDriveTrain(self):
         self.setupDriveMotor(self.wheelLeft)
         self.setupDriveMotor(self.wheelRight)
-
-    def setupStop(self):
-        self.controller.buttonFUp.pressed(self.stopAll)
 
     def stopAll(self):
         self.catapultRight.stop(HOLD)    
         self.catapultLeft.stop(HOLD) 
-        self.stopIntake(HOLD)   
+        self.stopIntake(HOLD)
+
+    def setupSensors(self):
+        self.foundIntakeBall: bool = False
+        self.lostIntakeBall: bool = False
+        self.foundCatapultBall: bool = False
+        self.lostCatapultBall: bool = False
+        self.sensorThread = Thread(self.checkSensors)
+
+    def checkSensors(self):
+        # Loop forever in a separate thread ("when started" in Vex Blocks)
+        while self.isRunning():
+            if self.isBallAtIntake():
+                if not self.foundIntakeBall:
+                    self.foundIntakeBall = True  # These variables keep us from raising
+                    self.lostIntakeBall = False  # the broadcast over and over again
+                    self.eventIntakeBallFound.broadcast()
+            else:
+                if not self.lostIntakeBall:
+                    self.lostIntakeBall = True
+                    self.foundIntakeBall = False
+                    self.eventIntakeBallLost.broadcast()
+            if self.isBallOnCatapult():
+                if not self.foundCatapultBall:
+                    self.foundCatapultBall = True
+                    self.lostCatapultBall = False
+                    self.eventCatapultBallFound.broadcast()
+                else:
+                    self.foundCatapultBall = False
+                    self.lostCatapultBall = True
+                    self.eventCatapultBallLost.broadcast()
+            wait(20, MSEC)
+
+    def run(self):
+        self.isRunningNow = True
+        self.setup()
+
+class DriveBot(Bot):
+    def __init__(self):
+        super().__init__()
+
+    def setupController(self):
+        self.controller = Controller()
+        # Left buttons
+        self.controller.buttonLUp.pressed(self.runIntake)
+        self.controller.buttonLDown.pressed(self.intakeReverse)
+        # Right buttons
+        self.controller.buttonRUp.pressed(self.releaseDriveCatapult)
+        self.controller.buttonRDown.pressed(self.windCatapult)
+        # Special buttons
+        self.controller.buttonEUp.pressed(self.runBelt)
+        self.controller.buttonFUp.pressed(self.stopAll)
+        # Delay a tiny bit to make sure events get setup
+        wait(15, MSEC)
+
+    def cancelCatapultRewind(self):
+        # Special trick: hold down EUp to cancel re-wind of catapult
+        return self.controller.buttonEUp.pressing()
+
+    def releaseDriveCatapult(self):
+        # This is passing a function, not a function call return value!
+        self.releaseCatapult(self.cancelCatapultRewind)
 
     def updateDriveMotor(self, drive: Motor, velocity: float, joystickTolerance: int):
-        # Cubic function helps improve drive responsiveness
+        print("i am driving")
+        # Cubic function helps improve drive responsiveness?
         velocity = velocity**3
         velocity = velocity/10000
         if math.fabs(velocity) <= joystickTolerance:
             velocity = 0
         drive.set_velocity(velocity, PERCENT)
 
-    def runManual(self):
-        self.isRunning = True
+    def run(self):
+        super().run()
         self.print("Extreme Axolotls!")
         self.print("Ready")
-        while self.isRunning:
+        self.setupController()
+        while self.isRunning():
             self.updateDriveMotor(self.wheelRight, self.controller.axisD.position(), 5)
             self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
             sleep(20)
 
-    def run(self):
-        self.setup()
-        self.runManual()
 
-# Where it all begins!    
-bot = Bot()
+# TODO: Separate class for doing all the autonomous stuff
+class AutoBot(Bot):
+    def __init__(self):
+        super().__init__()
+        self.cancelCalibration = False
+
+    def run(self):
+        super().run()
+
+
+# Where it all begins.
+bot = DriveBot()
 bot.run()
+
