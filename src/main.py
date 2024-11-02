@@ -2,16 +2,20 @@
 # Team 4028X Extreme Axolotls
 # 2023-25 VEX IQ Rapid Relay Challenge
 from vex import * 
+import time
+
 
 # Bot is a "base class" inherited (shared) by both DriveBot and AutoBot. All
 # the common stuff goes in the Bot class. Our mentor showed us how inheritance
 # can help keep our code organized. Because VEX doesn't let us create our
 # own python modules to share, we just have to copy 
 class Bot:
-    def __init__(self):
+    def __init__(self,
+                 screenColor: Color.DefinedColor = Color.BLUE,
+                 penColor: Color.DefinedColor = Color.WHITE):
         self.isRunningNow = False
-        self.screenColor = Color.BLUE
-        self.penColor = Color.WHITE
+        self.screenColor = screenColor
+        self.penColor = penColor
 
     def isRunning(self) -> bool:
         return self.isRunningNow
@@ -67,8 +71,8 @@ class Bot:
         self.intakeRight = Motor(Ports.PORT1)
         self.intakeLeft = Motor(Ports.PORT4, True)
         self.catapultSensor = Distance(Ports.PORT2)
-        self.LEDLeft = Touchled(Ports. PORT10)
-        self.LEDRight = Touchled(Ports. PORT9)
+        self.touchLedLeft = Touchled(Ports. PORT10)
+        self.touchLedRight = Touchled(Ports. PORT9)
         self.backBumper = Bumper(Ports.PORT8)
 
     def setupScreen(self):
@@ -95,22 +99,47 @@ class Bot:
         self.brain.screen.new_line()
         print(message)  # For connected console
 
-    def setupDriveMotor(self, motor: Motor):
-        motor.set_velocity(0, PERCENT)
+    def updateMotor(self,
+                    motor: Motor,
+                    velocityPercent: float,
+                    direction: DirectionType.DirectionType = FORWARD,
+                    brakeType: BrakeType.BrakeType = COAST,
+                    timeoutSecs: float = 0.0,
+                    spinNow: bool = True,
+                    resetPosition: bool = False):
+        motor.set_velocity(velocityPercent, PERCENT)
         motor.set_max_torque(100, PERCENT)
-        motor.spin(FORWARD)
+        motor.set_stopping(brakeType)
+        if timeoutSecs > 0.0:
+            motor.set_timeout(timeoutSecs, SECONDS)
+        if spinNow:
+            motor.spin(direction)
+        if resetPosition:
+            motor.set_position(0, RotationUnits.REV)
+
+    def updateDriveTrain(self,
+                      velocityPercent: float,
+                      direction: DirectionType.DirectionType = FORWARD,
+                      brakeType: BrakeType.BrakeType = COAST,
+                      timeoutSecs: float = 0.0,
+                      spinNow: bool = True,
+                      resetPosition: bool = False):
+        self.updateMotor(self.wheelLeft, velocityPercent, direction, brakeType, timeoutSecs, spinNow, resetPosition)
+        self.updateMotor(self.wheelRight, velocityPercent, direction, brakeType, timeoutSecs, spinNow, resetPosition)
+
+    def stopDriveTrain(self,brakeType: BrakeType.BrakeType = COAST):
+        self.wheelLeft.stop(brakeType)
+        self.wheelRight.stop(brakeType)
 
     def setupCatapult(self, velocity: int = 100):
-        self.catapultRight.set_velocity(velocity)
-        self.catapultLeft.set_velocity(velocity)
-        self.catapultRight.set_stopping(HOLD)
-        self.catapultLeft.set_stopping(HOLD)
+        self.updateMotor(self.catapultLeft, velocity, brakeType=HOLD, spinNow=False)
+        self.updateMotor(self.catapultRight, velocity, brakeType=HOLD, spinNow=False)
         self.backBumper.pressed(self.onBumperPressed)
         self.backBumper.released(self.onBumperReleased)
 
     def setupIntake(self, velocity: int = 100):
-        self.intakeRight.set_velocity(velocity)
-        self.intakeLeft.set_velocity(velocity)
+        self.intakeRight.set_velocity(velocity, PERCENT)
+        self.intakeLeft.set_velocity(velocity, PERCENT)
 
     def spinIntake(self, direction: DirectionType.DirectionType):
         self.intakeRight.spin(direction) 
@@ -120,7 +149,7 @@ class Bot:
         self.intakeRight.stop(mode)
         self.intakeLeft.stop(mode)
     
-    def runIntake(self):    
+    def runIntake(self):  
         if not self.isCatapultDown(): # Catapult is up... somehow
             self.windCatapult() # Lower catapult
         self.spinIntake(REVERSE)
@@ -143,11 +172,11 @@ class Bot:
 
     def onBumperPressed(self):
         self.brain.play_sound(SoundType.TADA)
-        self.LEDLeft.set_color(Color.GREEN)
+        self.touchLedLeft.set_color(Color.GREEN)
         self.eventBackBumperPressed.broadcast()
 
     def onBumperReleased(self):
-        self.LEDLeft.off()
+        self.touchLedLeft.off()
         self.eventBackBumperReleased.broadcast()
 
     def releaseCatapult(self, cancelRewind = None): # Down Button
@@ -171,8 +200,8 @@ class Bot:
         self.catapultLeft.stop(HOLD)
 
     def setupDriveTrain(self):
-        self.setupDriveMotor(self.wheelLeft)
-        self.setupDriveMotor(self.wheelRight)
+        self.updateMotor(self.wheelLeft, 0.0, FORWARD)
+        self.updateMotor(self.wheelRight, 0.0, FORWARD)
 
     def stopAll(self):
         self.catapultRight.stop(HOLD)    
@@ -213,6 +242,11 @@ class Bot:
     def run(self):
         self.isRunningNow = True
         self.setup()
+        self.clearScreen()
+
+# ============================================================================
+# ============================================================================
+# ============================================================================
 
 class DriveBot(Bot):
     def __init__(self):
@@ -241,7 +275,6 @@ class DriveBot(Bot):
         self.releaseCatapult(self.cancelCatapultRewind)
 
     def updateDriveMotor(self, drive: Motor, velocity: float, joystickTolerance: int):
-        print("i am driving")
         # Cubic function helps improve drive responsiveness?
         velocity = velocity**3
         velocity = velocity/10000
@@ -251,6 +284,7 @@ class DriveBot(Bot):
 
     def run(self):
         super().run()
+        self.clearScreen()
         self.print("Extreme Axolotls!")
         self.print("Ready")
         self.setupController()
@@ -260,17 +294,6 @@ class DriveBot(Bot):
             sleep(20)
 
 
-# TODO: Separate class for doing all the autonomous stuff
-class AutoBot(Bot):
-    def __init__(self):
-        super().__init__()
-        self.cancelCalibration = False
-
-    def run(self):
-        super().run()
-
-
 # Where it all begins.
 bot = DriveBot()
 bot.run()
-
