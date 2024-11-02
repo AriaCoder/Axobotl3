@@ -138,16 +138,18 @@ class Bot:
         self.backBumper.released(self.onBumperReleased)
 
     def setupIntake(self, velocity: int = 100):
-        self.intakeRight.set_velocity(velocity, PERCENT)
         self.intakeLeft.set_velocity(velocity, PERCENT)
+        self.intakeRight.set_velocity(velocity, PERCENT)
 
     def spinIntake(self, direction: DirectionType.DirectionType):
-        self.intakeRight.spin(direction) 
+        # self.intakeLeft.set_velocity(100, PERCENT)
+        # self.intakeRight.set_velocity(100, PERCENT)
         self.intakeLeft.spin(direction)
+        self.intakeRight.spin(direction) # Motor is configured reverse
 
     def stopIntake(self, mode = HOLD):
-        self.intakeRight.stop(mode)
         self.intakeLeft.stop(mode)
+        self.intakeRight.stop(mode)
     
     def runIntake(self):  
         if not self.isCatapultDown(): # Catapult is up... somehow
@@ -218,25 +220,27 @@ class Bot:
     def checkSensors(self):
         # Loop forever in a separate thread ("when started" in Vex Blocks)
         while self.isRunning():
-            if self.isBallAtIntake():
-                if not self.foundIntakeBall:
-                    self.foundIntakeBall = True  # These variables keep us from raising
-                    self.lostIntakeBall = False  # the broadcast over and over again
-                    self.eventIntakeBallFound.broadcast()
-            else:
-                if not self.lostIntakeBall:
-                    self.lostIntakeBall = True
-                    self.foundIntakeBall = False
-                    self.eventIntakeBallLost.broadcast()
-            if self.isBallOnCatapult():
-                if not self.foundCatapultBall:
-                    self.foundCatapultBall = True
-                    self.lostCatapultBall = False
-                    self.eventCatapultBallFound.broadcast()
+            if  self.intakeSensor.installed():
+                if self.isBallAtIntake():
+                    if not self.foundIntakeBall:
+                        self.foundIntakeBall = True  # These variables keep us from raising
+                        self.lostIntakeBall = False  # the broadcast over and over again
+                        self.eventIntakeBallFound.broadcast()
                 else:
-                    self.foundCatapultBall = False
-                    self.lostCatapultBall = True
-                    self.eventCatapultBallLost.broadcast()
+                    if not self.lostIntakeBall:
+                        self.lostIntakeBall = True
+                        self.foundIntakeBall = False
+                        self.eventIntakeBallLost.broadcast()
+            if self.topSensor.installed():
+                if self.isBallOnCatapult():
+                    if not self.foundCatapultBall:
+                        self.foundCatapultBall = True
+                        self.lostCatapultBall = False
+                        self.eventCatapultBallFound.broadcast()
+                    else:
+                        self.foundCatapultBall = False
+                        self.lostCatapultBall = True
+                        self.eventCatapultBallLost.broadcast()
             wait(20, MSEC)
 
     def run(self):
@@ -251,6 +255,10 @@ class Bot:
 class DriveBot(Bot):
     def __init__(self):
         super().__init__()
+
+    def setup(self):
+        super().setup()
+        self.setupController()
 
     def setupController(self):
         self.controller = Controller()
@@ -287,7 +295,6 @@ class DriveBot(Bot):
         self.clearScreen()
         self.print("Extreme Axolotls!")
         self.print("Ready")
-        self.setupController()
         while self.isRunning():
             self.updateDriveMotor(self.wheelRight, self.controller.axisD.position(), 5)
             self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
