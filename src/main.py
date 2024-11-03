@@ -58,7 +58,11 @@ class Bot:
             self.stopIntake()
 
     def onCatapultBallLost(self):
-        pass
+        if self.isBallAtIntake():
+            if not self.isCatapultDown():
+                self.windCatapult()
+            if not self.isBallOnCatapult():
+                self.spinIntake(REVERSE)
 
     def setupPortMappings(self):    
         # Drive train gear ratio is 2:1
