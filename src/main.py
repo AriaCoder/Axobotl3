@@ -78,6 +78,7 @@ class Bot:
         self.touchLedLeft = Touchled(Ports. PORT10)
         self.touchLedRight = Touchled(Ports. PORT9)
         self.backBumper = Bumper(Ports.PORT8)
+        self.ballHugger = Pneumatic(Ports.PORT10)
 
     def setupScreen(self):
         self.brain.screen.clear_screen()
@@ -140,30 +141,35 @@ class Bot:
         self.updateMotor(self.catapultRight, velocity, brakeType=HOLD, spinNow=False)
         self.backBumper.pressed(self.onBumperPressed)
         self.backBumper.released(self.onBumperReleased)
+        self.ballHugger.pump_on()
 
     def setupIntake(self, velocity: int = 100):
         self.intakeLeft.set_velocity(velocity, PERCENT)
         self.intakeRight.set_velocity(velocity, PERCENT)
 
     def spinIntake(self, direction: DirectionType.DirectionType):
-        # self.intakeLeft.set_velocity(100, PERCENT)
-        # self.intakeRight.set_velocity(100, PERCENT)
+        self.intakeLeft.set_velocity(100, PERCENT)
+        self.intakeRight.set_velocity(100, PERCENT)
         self.intakeLeft.spin(direction)
         self.intakeRight.spin(direction) # Motor is configured reverse
 
     def stopIntake(self, mode = HOLD):
+        self.intakeLeft.set_velocity(0)
+        self.intakeRight.set_velocity(0)
         self.intakeLeft.stop(mode)
         self.intakeRight.stop(mode)
     
     def runIntake(self):  
         if not self.isCatapultDown(): # Catapult is up... somehow
             self.windCatapult() # Lower catapult
+        self.releaseBall()  # Open up for the next ball
         self.spinIntake(REVERSE)
 
     def intakeReverse(self):
         self.spinIntake(FORWARD)
 
     def runBelt(self):
+        self.hugBall()
         self.catapultLeft.spin(REVERSE)
         self.catapultRight.spin(REVERSE)
 
@@ -209,11 +215,24 @@ class Bot:
         self.updateMotor(self.wheelLeft, 0.0, FORWARD)
         self.updateMotor(self.wheelRight, 0.0, FORWARD)
 
+    def releaseBall(self):
+        self.ballHugger.pump_on()
+        self.ballHugger.extend(CylinderType.CYLINDER1)
+        self.ballHugger.extend(CylinderType.CYLINDER2)
+
+    def hugBall(self):
+        self.ballHugger.pump_on()
+        self.ballHugger.retract(CylinderType.CYLINDER1)
+        self.ballHugger.retract(CylinderType.CYLINDER2)
+
     def stopAll(self):
         self.catapultRight.stop(HOLD)    
-        self.catapultLeft.stop(HOLD) 
+        self.catapultLeft.stop(HOLD)
+        self.releaseBall()
+        if self.intakeLeft.velocity() == 0.0:
+            self.ballHugger.pump_off()  # Stop TWICE to shut off the pump
         self.stopIntake(HOLD)
-
+        
     def setupSensors(self):
         self.foundIntakeBall: bool = False
         self.lostIntakeBall: bool = False
