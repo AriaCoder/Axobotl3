@@ -206,8 +206,8 @@ class Bot:
             self.catapultLeft.spin(FORWARD)
             wait(100, MSEC)
         # Spinning the catapult a little more because sensor placement can't go lower
-        self.catapultRight.spin_for(FORWARD, 60, DEGREES, wait = False)
-        self.catapultLeft.spin_for(FORWARD, 60, DEGREES)
+        self.catapultRight.spin_for(FORWARD, 10, DEGREES, wait = False)
+        self.catapultLeft.spin_for(FORWARD, 10, DEGREES)
         self.catapultRight.stop(HOLD)
         self.catapultLeft.stop(HOLD)
 
