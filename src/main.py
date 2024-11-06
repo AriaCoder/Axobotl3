@@ -180,15 +180,18 @@ class Bot:
     def runBelt(self):
         self.hugBall()
         self.catapultLeft.set_velocity(100, PERCENT)
+        self.catapultRight.set_velocity(100, PERCENT)
         self.catapultLeft.spin(REVERSE)
         self.catapultRight.spin(REVERSE)
 
     def stopCatAndBelt(self):
         self.catapultLeft.set_velocity(0, PERCENT)
+        self.catapultRight.set_velocity(0, PERCENT)
         self.catapultLeft.stop(HOLD)
         self.catapultRight.stop(HOLD)
 
     def isCatapultDown(self):
+        self.print(self.catapultSensor.installed())
         return self.catapultSensor.object_distance(MM) < 80
 
     def isBallAtIntake(self):
@@ -207,7 +210,10 @@ class Bot:
         self.eventBackBumperReleased.broadcast()
 
     def releaseCatapult(self, cancelRewind = None): # Down Button
+        self.releaseHug()
         if self.isCatapultDown():
+            self.catapultLeft.set_velocity(100, PERCENT)
+            self.catapultRight.set_velocity(100, PERCENT)
             self.catapultRight.spin_for(FORWARD, 180, DEGREES, wait=False)
             self.catapultLeft.spin_for(FORWARD, 180, DEGREES)
             # cancelWinding lets the caller of releaseCatapult() know
@@ -217,6 +223,9 @@ class Bot:
 
     def windCatapult(self):  # Up Button
         self.releaseHug()
+        self.catapultLeft.set_velocity(100, PERCENT)
+        self.catapultRight.set_velocity(100, PERCENT)
+        
         while not self.isCatapultDown():
             self.catapultRight.spin(FORWARD)
             self.catapultLeft.spin(FORWARD)
