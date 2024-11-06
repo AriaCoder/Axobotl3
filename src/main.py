@@ -179,8 +179,14 @@ class Bot:
 
     def runBelt(self):
         self.hugBall()
+        self.catapultLeft.set_velocity(100, PERCENT)
         self.catapultLeft.spin(REVERSE)
         self.catapultRight.spin(REVERSE)
+
+    def stopCatAndBelt(self):
+        self.catapultLeft.set_velocity(0, PERCENT)
+        self.catapultLeft.stop(HOLD)
+        self.catapultRight.stop(HOLD)
 
     def isCatapultDown(self):
         return self.catapultSensor.object_distance(MM) < 80
@@ -218,8 +224,7 @@ class Bot:
         # Spinning the catapult a little more because sensor placement can't go lower
         self.catapultRight.spin_for(FORWARD, 10, DEGREES, wait = False)
         self.catapultLeft.spin_for(FORWARD, 10, DEGREES)
-        self.catapultRight.stop(HOLD)
-        self.catapultLeft.stop(HOLD)
+        self.stopCatAndBelt()
 
     def setupDriveTrain(self):
         self.updateMotor(self.wheelLeft, 0.0, FORWARD)
@@ -227,8 +232,7 @@ class Bot:
 
     def releaseHug(self, stop: bool = True):
         if stop:
-            self.catapultLeft.stop(HOLD)
-            self.catapultRight.stop(HOLD)
+            self.stopCatAndBelt()
         self.ballHugger.pump_on()
         self.ballHugger.extend(CylinderType.CYLINDER1)
         self.ballHugger.extend(CylinderType.CYLINDER2)
@@ -239,8 +243,7 @@ class Bot:
         self.ballHugger.retract(CylinderType.CYLINDER2)
 
     def stopAll(self):
-        self.catapultRight.stop(HOLD)    
-        self.catapultLeft.stop(HOLD)
+        self.stopCatAndBelt()
         self.releaseHug(stop=True)
         if self.intakeLeft.velocity() == 0.0:
             self.ballHugger.pump_off()  # Stop TWICE to shut off the pump
@@ -301,7 +304,7 @@ class DriveBot(Bot):
         self.controller = Controller()
         # Left buttons
         self.controller.buttonLUp.pressed(self.runIntake)  
-        self.controller.buttonLDown.pressed(self.runBelt)
+        self.controller.buttonLDown.pressed(self.onLDown)
         # Right buttons
         self.controller.buttonRUp.pressed(self.releaseDriveCatapult)
         self.controller.buttonRDown.pressed(self.windCatapult)
@@ -311,6 +314,12 @@ class DriveBot(Bot):
         self.controller.buttonFUp.pressed(self.stopAll)
         # Delay a tiny bit to make sure events get setup
         wait(15, MSEC)
+
+    def onLDown(self):
+        if abs(self.catapultLeft.velocity()) > 0:
+            self.stopCatAndBelt()
+        else:
+            self.runBelt()
 
     def isContinuous(self) -> bool:
         return self.controller.buttonLDown.pressing()
