@@ -20,6 +20,9 @@ class Bot:
     def isRunning(self) -> bool:
         return self.isRunningNow
 
+    def isContinuous(self) -> bool:
+        return False
+
     def setup(self):
         self.brain = Brain()
         self.inertial = Inertial()
@@ -47,21 +50,24 @@ class Bot:
         pass
 
     def onIntakeBallFound(self):
-        if self.isBallOnCatapult():
+        if self.isBallOnCatapult() or not self.isCatapultDown():
             self.stopIntake()
 
     def onIntakeBallLost(self):
         pass
 
     def onCatapultBallFound(self):
-        if self.isBallAtIntake():
+        if self.isBallAtIntake() and not self.isContinuous():
             self.stopIntake()
+        elif not self.isContinuous():
+            self.releaseHug()
 
     def onCatapultBallLost(self):
         if self.isBallAtIntake():
             if not self.isCatapultDown():
+                self.stopIntake()
                 self.windCatapult()
-            if not self.isBallOnCatapult():
+            if not self.isBallOnCatapult() and self.isBallAtIntake():
                 self.spinIntake(REVERSE)
 
     def setupPortMappings(self):    
@@ -159,10 +165,13 @@ class Bot:
         self.intakeLeft.stop(mode)
         self.intakeRight.stop(mode)
     
-    def runIntake(self):  
+    def runIntake(self):
         if not self.isCatapultDown(): # Catapult is up... somehow
             self.windCatapult() # Lower catapult
-        self.releaseBall()  # Open up for the next ball
+        if self.isContinuous():
+            self.hugBall()
+        else:
+            self.releaseHug(stop=True)  # Open up for the next ball
         self.spinIntake(REVERSE)
 
     def intakeReverse(self):
@@ -177,7 +186,7 @@ class Bot:
         return self.catapultSensor.object_distance(MM) < 80
 
     def isBallAtIntake(self):
-        return self.intakeSensor.object_distance(MM) < 100
+        return self.intakeSensor.object_distance(MM) < 80
 
     def isBallOnCatapult(self):
         return self.topSensor.object_distance(MM) < 50
@@ -201,6 +210,7 @@ class Bot:
                 self.windCatapult()
 
     def windCatapult(self):  # Up Button
+        self.releaseHug()
         while not self.isCatapultDown():
             self.catapultRight.spin(FORWARD)
             self.catapultLeft.spin(FORWARD)
@@ -215,7 +225,10 @@ class Bot:
         self.updateMotor(self.wheelLeft, 0.0, FORWARD)
         self.updateMotor(self.wheelRight, 0.0, FORWARD)
 
-    def releaseBall(self):
+    def releaseHug(self, stop: bool = True):
+        if stop:
+            self.catapultLeft.stop(HOLD)
+            self.catapultRight.stop(HOLD)
         self.ballHugger.pump_on()
         self.ballHugger.extend(CylinderType.CYLINDER1)
         self.ballHugger.extend(CylinderType.CYLINDER2)
@@ -228,16 +241,16 @@ class Bot:
     def stopAll(self):
         self.catapultRight.stop(HOLD)    
         self.catapultLeft.stop(HOLD)
-        self.releaseBall()
+        self.releaseHug(stop=True)
         if self.intakeLeft.velocity() == 0.0:
             self.ballHugger.pump_off()  # Stop TWICE to shut off the pump
         self.stopIntake(HOLD)
         
     def setupSensors(self):
         self.foundIntakeBall: bool = False
-        self.lostIntakeBall: bool = False
+        self.lostIntakeBall: bool = True
         self.foundCatapultBall: bool = False
-        self.lostCatapultBall: bool = False
+        self.lostCatapultBall: bool = True
         self.sensorThread = Thread(self.checkSensors)
 
     def checkSensors(self):
@@ -260,7 +273,8 @@ class Bot:
                         self.foundCatapultBall = True
                         self.lostCatapultBall = False
                         self.eventCatapultBallFound.broadcast()
-                    else:
+                else:
+                    if not self.lostCatapultBall:
                         self.foundCatapultBall = False
                         self.lostCatapultBall = True
                         self.eventCatapultBallLost.broadcast()
@@ -280,22 +294,26 @@ class DriveBot(Bot):
         super().__init__()
 
     def setup(self):
-        super().setup()
         self.setupController()
+        super().setup()
 
     def setupController(self):
         self.controller = Controller()
         # Left buttons
-        self.controller.buttonLUp.pressed(self.runIntake)
-        self.controller.buttonLDown.pressed(self.intakeReverse)
+        self.controller.buttonLUp.pressed(self.runIntake)  
+        self.controller.buttonLDown.pressed(self.runBelt)
         # Right buttons
         self.controller.buttonRUp.pressed(self.releaseDriveCatapult)
         self.controller.buttonRDown.pressed(self.windCatapult)
         # Special buttons
         self.controller.buttonEUp.pressed(self.runBelt)
+        self.controller.buttonEDown.pressed(self.intakeReverse)
         self.controller.buttonFUp.pressed(self.stopAll)
         # Delay a tiny bit to make sure events get setup
         wait(15, MSEC)
+
+    def isContinuous(self) -> bool:
+        return self.controller.buttonLDown.pressing()
 
     def cancelCatapultRewind(self):
         # Special trick: hold down EUp to cancel re-wind of catapult
