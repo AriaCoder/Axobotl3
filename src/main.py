@@ -198,7 +198,7 @@ class Bot:
         return self.intakeSensor.object_distance(MM) < 80
 
     def isBallOnCatapult(self):
-        return self.topSensor.object_distance(MM) < 50
+        return self.topSensor.object_distance(MM) < 50 and self.isCatapultDown()
 
     def onBumperPressed(self):
         self.brain.play_sound(SoundType.TADA)
@@ -211,21 +211,19 @@ class Bot:
 
     def releaseCatapult(self, cancelRewind = None): # Down Button
         self.releaseHug()
-        if self.isCatapultDown():
-            self.catapultLeft.set_velocity(100, PERCENT)
-            self.catapultRight.set_velocity(100, PERCENT)
-            self.catapultRight.spin_for(FORWARD, 180, DEGREES, wait=False)
-            self.catapultLeft.spin_for(FORWARD, 180, DEGREES)
-            # cancelWinding lets the caller of releaseCatapult() know
-            # if winding should be cancelled (keeps tension off rubber bands)
-            if (cancelRewind is None or not cancelRewind()):
-                self.windCatapult()
+        self.catapultLeft.set_velocity(100, PERCENT)
+        self.catapultRight.set_velocity(100, PERCENT)
+        self.catapultRight.spin_for(FORWARD, 180, DEGREES, wait=False)
+        self.catapultLeft.spin_for(FORWARD, 180, DEGREES)
+        # cancelWinding lets the caller of releaseCatapult() know
+        # if winding should be cancelled (keeps tension off rubber bands)
+        if (cancelRewind is None or not cancelRewind()):
+            self.windCatapult()
 
     def windCatapult(self):  # Up Button
         self.releaseHug()
         self.catapultLeft.set_velocity(100, PERCENT)
         self.catapultRight.set_velocity(100, PERCENT)
-        
         while not self.isCatapultDown():
             self.catapultRight.spin(FORWARD)
             self.catapultLeft.spin(FORWARD)
