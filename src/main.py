@@ -50,7 +50,7 @@ class Bot:
         pass
 
     def onIntakeBallFound(self):
-        if self.isBallOnCatapult() or not self.isCatapultDown():
+        if self.isBallOnCatapult():
             self.stopIntake()
 
     def onIntakeBallLost(self):
@@ -191,14 +191,13 @@ class Bot:
         self.catapultRight.stop(HOLD)
 
     def isCatapultDown(self):
-        self.print(self.catapultSensor.installed())
         return self.catapultSensor.object_distance(MM) < 80
 
     def isBallAtIntake(self):
         return self.intakeSensor.object_distance(MM) < 80
 
     def isBallOnCatapult(self):
-        return self.topSensor.object_distance(MM) < 50 and self.isCatapultDown()
+        return self.topSensor.object_distance(MM) < 35
 
     def onBumperPressed(self):
         self.brain.play_sound(SoundType.TADA)
