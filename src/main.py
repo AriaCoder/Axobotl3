@@ -209,8 +209,8 @@ class Bot:
             wait(10, MSEC)
         # TODO: Check if we still need/want this. Tune it to new Gen3 bot?
         # Spinning the catapult a little more because sensor placement can't go lower
-        self.catBeltRight.spin_for(FORWARD, 10, DEGREES, wait = False)
-        self.catBeltLeft.spin_for(FORWARD, 10, DEGREES)
+        self.catBeltRight.spin_for(FORWARD, 50, DEGREES, wait = False)
+        self.catBeltLeft.spin_for(FORWARD, 50, DEGREES)
         self.stopCatAndBelt()
 
     def releaseHug(self, stop: bool = True):

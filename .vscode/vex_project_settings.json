@@ -1,16 +1,16 @@
 {
 	"extension": {
-		"version": "0.6.0",
+		"version": "0.6.1",
 		"json": 2
 	},
 	"project": {
 		"name": "Axobotl",
-		"description": "",
-		"creationDate": "10/23/2023, 4:46:21 PM",
+		"description": "VEX IQ Rapid Relay 2024-25 4028X Extreme Axolotls",
+		"creationDate": "05/18/2024, 12:35:25 PM",
 		"platform": "IQ2",
 		"language": "python",
-		"slot": 1,
-		"sdkVersion": "IQ2_1_0_0_19",
+		"slot": 5,
+		"sdkVersion": "IQ2_1_0_0_20",
 		"python": {
 			"main": "src/main.py"
 		}
