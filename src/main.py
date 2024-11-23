@@ -4,320 +4,305 @@
 from vex import *
 
 
-# Bot is a "base class" inherited (shared) by both DriveBot and AutoBot. All
-# the common stuff goes in the Bot class. Our mentor showed us how inheritance
-# can help keep our code organized. Because VEX doesn't let us create our
-# own python modules to share, we just have to copy 
-class Bot:
-    def __init__(self,
-                 screenColor: Color.DefinedColor = Color.BLUE,
-                 penColor: Color.DefinedColor = Color.WHITE):
-        self.screenColor = screenColor
-        self.penColor = penColor
+# The Eye class is useful for us
+# Represents a Distance sensor that broadcasts if it "sees" an object
+class Eye:
+    def __init__(self, portNumber: int, distanceThreshold: int, units: DistanceUnits.DistanceUnits = DistanceUnits.MM):
+        self.sensor = Distance(portNumber)
+        self.distanceThreshold: int = distanceThreshold
+        self.units = units
+        self.seen: bool = False  # Variables keep us from broadcast()-ing repeatedly
+        self.lost: bool = False
+        self.eventSeen = None
+        self.eventLost = None
 
-    def isContinuous(self) -> bool:
+    def setCallbacks(self, callbackSeen, callbackLost):
+        self.eventSeen = Event(callbackSeen)
+        self.eventLost = Event(callbackLost)
+
+    def isObjectVisible(self) -> bool:
+        return True if self.sensor.object_distance(self.units) <= self.distanceThreshold else False
+    
+    def look(self) -> bool:
+        if self.sensor.installed():
+            if self.isObjectVisible():
+                if not self.seen:
+                    self.seen = True
+                    self.lost = False
+                    if self.eventSeen: self.eventSeen.broadcast()
+                    return True
+            else:
+                if not self.lost:
+                    self.seen = False
+                    self.lost = True
+                    if self.eventLost: self.eventLost.broadcast()
         return False
 
-    def setup(self):
-        self.brain = Brain()
-        self.inertial = Inertial()
-        self.clearScreen()
-        self.setupPortMappings()
-        self.updateMotor(self.wheelLeft, 0.0, FORWARD)
-        self.updateMotor(self.wheelRight, 0.0, FORWARD)
-        self.eventButtBumperPressed: Event = Event(self.onButtBumperPressed)
-        self.eventButtBumperReleased: Event = Event(self.onButtBumperReleased)
-        self.eventIntakeBallSeen: Event = Event(self.onIntakeBallSeen)
-        self.eventIntakeBallLost: Event = Event(self.onIntakeBallLost)
-        self.eventCatBallSeen: Event = Event(self.onTopBallSeen)
-        self.eventCatBallLost: Event = Event(self.onTopBallLost)
+# Setup
+brain = Brain()
+inertial = Inertial()
 
-        self.wheelLeft.set_max_torque(100, PERCENT)
-        self.wheelRight.set_max_torque(100, PERCENT)
+wheelLeft = Motor(Ports.PORT7, 2.0, True)  # Gear ratio: 2:1
+wheelRight = Motor(Ports.PORT12, 2.0, False)
+intakeEye = Eye(Ports.PORT6, 80, MM)
+topEye = Eye(Ports.PORT5, 35, MM)
+catEye = Eye(Ports.PORT2, 80, MM)
+catBeltLeft = Motor(Ports.PORT3)
+catBeltRight = Motor(Ports.PORT11,True)
+intakeLeft = Motor(Ports.PORT4, True)
+intakeRight = Motor(Ports.PORT1)
+ledLeft = Touchled(Ports.PORT10)
+ledRight = Touchled(Ports.PORT9)
+buttBumper = Bumper(Ports.PORT8)
+ballHugger = Pneumatic(Ports.PORT10)
+screenColor: Color.DefinedColor = Color.BLUE
+penColor: Color.DefinedColor = Color.WHITE
 
-        self.intakeLeft.set_velocity(100, PERCENT)
-        self.intakeRight.set_velocity(100, PERCENT)
-        self.intakeLeft.set_max_torque(100, PERCENT)
-        self.intakeRight.set_max_torque(100, PERCENT)
+catBeltRunning: bool = False
+intakeRunning: bool = False
 
-        self.catBeltLeft.set_velocity(100, PERCENT)
-        self.catBeltRight.set_velocity(100, PERCENT)
-        self.catBeltLeft.set_max_torque(100, PERCENT)
-        self.catBeltRight.set_max_torque(100, PERCENT)
+isContinuousCallback = None
 
-        self.catBeltRunning: bool = False
-        self.intakeRunning: bool = False
-        self.intakeBallSeen: bool = False
-        self.intakeBallLost: bool = False
-        self.topBallSeen: bool = False
-        self.topBallLost: bool = False
-        self.sensorThread = Thread(self.checkSensors)
-        self.setupCatBelt()
+wait(15, MSEC)  # Allow events and everything else to initialize
 
-    def clearScreen(self, screenColor = None, penColor = None):
-        self.screenColor = self.screenColor if screenColor is None else screenColor
-        self.penColor = self.penColor if penColor is None else penColor
-        self.brain.screen.clear_screen()
-        self.brain.screen.set_fill_color(self.screenColor)
-        self.brain.screen.set_pen_color(self.screenColor)
-        self.brain.screen.draw_rectangle(0, 0, 170, 100, self.screenColor)
-        self.brain.screen.set_pen_color(self.penColor)
-        self.brain.screen.set_font(FontType.MONO20)
-        self.brain.screen.set_cursor(1, 1)
 
-    def setupPortMappings(self):    
-        self.wheelLeft = Motor(Ports.PORT7, 2.0, True)  # Gear ratio: 2:1
-        self.wheelRight = Motor(Ports.PORT12, 2.0, False)
-        self.intakeEye = Distance(Ports.PORT6)
-        self.topEye = Distance(Ports.PORT5)
-        self.catEye = Distance(Ports.PORT2)
-        self.catBeltLeft = Motor(Ports.PORT3)
-        self.catBeltRight = Motor(Ports.PORT11,True)
-        self.intakeLeft = Motor(Ports.PORT4, True)
-        self.intakeRight = Motor(Ports.PORT1)
-        self.ledLeft = Touchled(Ports.PORT10)
-        self.ledRight = Touchled(Ports.PORT9)
-        self.buttBumper = Bumper(Ports.PORT8)
-        self.ballHugger = Pneumatic(Ports.PORT10)
+def setup():
+    clearScreen()
+    updateMotor(wheelLeft, 0.0, FORWARD)
+    updateMotor(wheelRight, 0.0, FORWARD)
+    wheelLeft.set_max_torque(100, PERCENT)
+    wheelRight.set_max_torque(100, PERCENT)
 
-    def print(self, message):
-        self.brain.screen.print(message)
-        self.brain.screen.new_line()
-        print(message)  # For connected console
+    intakeLeft.set_velocity(100, PERCENT)
+    intakeRight.set_velocity(100, PERCENT)
+    intakeLeft.set_max_torque(100, PERCENT)
+    intakeRight.set_max_torque(100, PERCENT)
 
-    def onButtBumperPressed(self):
-        pass
+    catBeltLeft.set_velocity(100, PERCENT)
+    catBeltRight.set_velocity(100, PERCENT)
+    catBeltLeft.set_max_torque(100, PERCENT)
+    catBeltRight.set_max_torque(100, PERCENT)
+    setupCatBelt()
 
-    def onButtBumperReleased(self):
-        pass
+def clearScreen(screenColor = None, penColor = None):
+    screenColor = screenColor if screenColor is None else screenColor
+    penColor = penColor if penColor is None else penColor
+    brain.screen.clear_screen()
+    brain.screen.set_fill_color(screenColor)
+    brain.screen.set_pen_color(screenColor)
+    brain.screen.draw_rectangle(0, 0, 170, 100, screenColor)
+    brain.screen.set_pen_color(penColor)
+    brain.screen.set_font(FontType.MONO20)
+    brain.screen.set_cursor(1, 1)
 
-    def onIntakeBallSeen(self):
-        if self.isBallOnTop(): self.stopIntake()
+def brainPrint(message):
+    brain.screen.print(message)
+    brain.screen.new_line()
+    print(message)  # For connected console
 
-    def onIntakeBallLost(self):
-        pass
+def onButtBumperPressed():
+    pass
 
-    def onTopBallSeen(self):
-        if not self.isContinuous():
-            if self.isBallAtIntake(): self.stopIntake()
-            self.releaseHug()
+def onButtBumperReleased():
+    pass
 
-    def onTopBallLost(self):
-        if self.isBallAtIntake():
-            if not self.isCatDown():
-                self.stopIntake()
-                self.windCat()
-            if not self.isBallOnTop() and self.isBallAtIntake(): self.spinIntake(REVERSE)
+def onIntakeBallSeen():
+    if topEye.isObjectVisible(): stopIntake()
 
-    def updateMotor(self,
-                    motor: Motor,
-                    velocityPercent: float,
-                    direction: DirectionType.DirectionType = FORWARD,
-                    brakeType: BrakeType.BrakeType = COAST,
-                    timeoutSecs: float = 0.0,
-                    spinNow: bool = True,
-                    resetPosition: bool = False):
-        motor.set_velocity(velocityPercent, PERCENT)
-        motor.set_stopping(brakeType)
-        if timeoutSecs > 0.0: motor.set_timeout(timeoutSecs, SECONDS)
-        if spinNow: motor.spin(direction)
-        if resetPosition: motor.set_position(0, RotationUnits.REV)
-    
-    def updateDriveTrain(self,
-                      velocityPercent: float,
-                      direction: DirectionType.DirectionType = FORWARD,
-                      brakeType: BrakeType.BrakeType = COAST,
-                      timeoutSecs: float = 0.0,
-                      spinNow: bool = True,
-                      resetPosition: bool = False):
-        self.updateMotor(self.wheelLeft, velocityPercent, direction, brakeType, timeoutSecs, spinNow, resetPosition)
-        self.updateMotor(self.wheelRight, velocityPercent, direction, brakeType, timeoutSecs, spinNow, resetPosition)
+def onIntakeBallLost():
+    pass
 
-    def stopDriveTrain(self,brakeType: BrakeType.BrakeType = COAST):
-        self.wheelLeft.stop(brakeType)
-        self.wheelRight.stop(brakeType)
+def onTopBallSeen():
+    if not isContinuousCallback or not isContinuousCallback():
+        if intakeEye.isObjectVisible(): stopIntake()
+        releaseHug()
 
-    def setupCatBelt(self, velocity: int = 100):
-        self.updateMotor(self.catBeltLeft, velocity, brakeType=HOLD, spinNow=False)
-        self.updateMotor(self.catBeltRight, velocity, brakeType=HOLD, spinNow=False)
-        self.buttBumper.pressed(self.onBumperPressed)
-        self.buttBumper.released(self.onBumperReleased)
-        self.ballHugger.pump_on()
+def onTopBallLost():
+    if topEye.isObjectVisible():
+        if not catEye.isObjectVisible():
+            stopIntake()
+            windCat()
+        if not topEye.isObjectVisible() and intakeEye.isObjectVisible(): spinIntake(REVERSE)
 
-    def spinIntake(self, direction: DirectionType.DirectionType):
-        self.intakeLeft.spin(direction)
-        self.intakeRight.spin(direction) # Motor is configured reverse
-        self.intakeRunning = True
+def updateMotor(motor: Motor,
+                velocityPercent: float,
+                direction: DirectionType.DirectionType = FORWARD,
+                brakeType: BrakeType.BrakeType = COAST,
+                timeoutSecs: float = 0.0,
+                spinNow: bool = True,
+                resetPosition: bool = False):
+    motor.set_velocity(velocityPercent, PERCENT)
+    motor.set_stopping(brakeType)
+    if timeoutSecs > 0.0: motor.set_timeout(timeoutSecs, SECONDS)
+    if spinNow: motor.spin(direction)
+    if resetPosition: motor.set_position(0, RotationUnits.REV)
 
-    def stopIntake(self, mode = HOLD):
-        self.intakeLeft.stop(mode)
-        self.intakeRight.stop(mode)
-        self.intakeRunning = False
-    
-    def startIntake(self):
-        if not self.isCatDown(): self.windCat()
-        if self.isContinuous(): self.hugBall()
-        else: self.releaseHug(stop=True)  # Open up for the next ball
-        self.spinIntake(REVERSE)
+def updateDriveTrain(velocityPercent: float,
+                     direction: DirectionType.DirectionType = FORWARD,
+                     brakeType: BrakeType.BrakeType = COAST,
+                     timeoutSecs: float = 0.0,
+                     spinNow: bool = True,
+                     resetPosition: bool = False):
+    updateMotor(wheelLeft, velocityPercent, direction, brakeType, timeoutSecs, spinNow, resetPosition)
+    updateMotor(wheelRight, velocityPercent, direction, brakeType, timeoutSecs, spinNow, resetPosition)
 
-    def reverseIntake(self):
-        self.spinIntake(FORWARD)
+def stopDriveTrain(brakeType: BrakeType.BrakeType = COAST):
+    wheelLeft.stop(brakeType)
+    wheelRight.stop(brakeType)
 
-    def startBelt(self):
-        self.hugBall()
-        self.catBeltLeft.spin(REVERSE)
-        self.catBeltRight.spin(REVERSE)
-        self.catBeltRunning = True
+def setupCatBelt(velocity: int = 100):
+    updateMotor(catBeltLeft, velocity, brakeType=HOLD, spinNow=False)
+    updateMotor(catBeltRight, velocity, brakeType=HOLD, spinNow=False)
+    buttBumper.pressed(onBumperPressed)
+    buttBumper.released(onBumperReleased)
+    ballHugger.pump_on()
 
-    def stopCatAndBelt(self):
-        self.catBeltLeft.stop(HOLD)
-        self.catBeltRight.stop(HOLD)
-        self.catBeltRunning = False
+def spinIntake(direction: DirectionType.DirectionType):
+    intakeLeft.spin(direction)
+    intakeRight.spin(direction) # Motor is configured reverse
+    intakeRunning = True
 
-    def isCatDown(self):
-        return self.catEye.object_distance(MM) < 80
+def stopIntake(mode = HOLD):
+    intakeLeft.stop(mode)
+    intakeRight.stop(mode)
+    intakeRunning = False
 
-    def isBallAtIntake(self):
-        return self.intakeEye.object_distance(MM) < 80
+def startIntake():
+    if not catEye.isObjectVisible(): windCat()
+    if isContinuousCallback and isContinuousCallback(): hugBall()
+    else: releaseHug(stop=True)  # Open up for the next ball
+    spinIntake(REVERSE)
 
-    def isBallOnTop(self):
-        return self.topEye.object_distance(MM) < 35
+def reverseIntake():
+    spinIntake(FORWARD)
 
-    def onBumperPressed(self):
-        self.brain.play_sound(SoundType.TADA)
-        self.ledLeft.set_color(Color.GREEN)
-        self.eventButtBumperPressed.broadcast()
+def startBelt():
+    hugBall()
+    catBeltLeft.spin(REVERSE)
+    catBeltRight.spin(REVERSE)
+    catBeltRunning = True
 
-    def onBumperReleased(self):
-        self.ledLeft.off()
-        self.eventButtBumperReleased.broadcast()
+def stopCatAndBelt():
+    catBeltLeft.stop(HOLD)
+    catBeltRight.stop(HOLD)
+    catBeltRunning = False
 
-    def releaseCat(self, cancelRewind = None): # Down Button
-        self.releaseHug()
-        self.catBeltRight.spin_for(FORWARD, 180, DEGREES, wait=False)
-        self.catBeltLeft.spin_for(FORWARD, 180, DEGREES)
-        # cancelWinding lets the caller of releaseCatapult() know
-        # if winding should be cancelled (keeps tension off rubber bands)
-        if (cancelRewind is None or not cancelRewind()): self.windCat()
+def onBumperPressed():
+    brain.play_sound(SoundType.TADA)
+    ledLeft.set_color(Color.GREEN)
+    buttBumperPressed.broadcast()
 
-    def windCat(self):  # Up Button
-        self.releaseHug()
-        self.catBeltLeft.spin(FORWARD)
-        self.catBeltRight.spin(FORWARD)
-        for _ in range(3 * 100):  # 3 seconds @ 10ms/loop
-            if self.isCatDown(): break
-            wait(10, MSEC)
-        # TODO: Check if we still need/want this. Tune it to new Gen3 bot?
-        # Spinning the catapult a little more because sensor placement can't go lower
-        self.catBeltRight.spin_for(FORWARD, 10, DEGREES, wait = False)
-        self.catBeltLeft.spin_for(FORWARD, 10, DEGREES)
-        self.stopCatAndBelt()
+def onBumperReleased():
+    ledLeft.off()
+    buttBumperReleased.broadcast()
 
-    def releaseHug(self, stop: bool = True):
-        if stop: self.stopCatAndBelt()
-        self.ballHugger.pump_on()
-        self.ballHugger.extend(CylinderType.CYLINDER1)
-        self.ballHugger.extend(CylinderType.CYLINDER2)
+def releaseCat(cancelRewind = None): # Down Button
+    releaseHug()
+    catBeltRight.spin_for(FORWARD, 180, DEGREES, wait=False)
+    catBeltLeft.spin_for(FORWARD, 180, DEGREES)
+    # cancelWinding lets the caller of releaseCatapult() know
+    # if winding should be cancelled (keeps tension off rubber bands)
+    if (cancelRewind is None or not cancelRewind()): windCat()
 
-    def hugBall(self):
-        self.ballHugger.pump_on()
-        self.ballHugger.retract(CylinderType.CYLINDER1)
-        self.ballHugger.retract(CylinderType.CYLINDER2)
+def windCat():  # Up Button
+    releaseHug()
+    catBeltLeft.spin(FORWARD)
+    catBeltRight.spin(FORWARD)
+    for _ in range(3 * 100):  # 3 seconds @ 10ms/loop
+        if catEye.isObjectVisible(): break
+        wait(10, MSEC)
+    # TODO: Check if we still need/want this. Tune it to new Gen3 bot?
+    # Spinning the catapult a little more because sensor placement can't go lower
+    catBeltRight.spin_for(FORWARD, 10, DEGREES, wait = False)
+    catBeltLeft.spin_for(FORWARD, 10, DEGREES)
+    stopCatAndBelt()
 
-    def stopAll(self):
-        self.stopCatAndBelt()
-        self.releaseHug(stop=True)
-        if not self.intakeRunning: self.ballHugger.pump_off()  # Stop TWICE to shut off the pump
-        self.stopIntake(HOLD)
+def releaseHug(stop: bool = True):
+    if stop: stopCatAndBelt()
+    ballHugger.pump_on()
+    ballHugger.extend(CylinderType.CYLINDER1)
+    ballHugger.extend(CylinderType.CYLINDER2)
 
-    def checkIntakeEye(self):
-        if self.intakeEye.installed():
-            if self.isBallAtIntake():
-                if not self.intakeBallSeen:
-                    self.intakeBallSeen = True  # These variables keep us from raising
-                    self.intakeBallLost = False  # the broadcast over and over again
-                    self.eventIntakeBallSeen.broadcast()
-            else:
-                if not self.intakeBallLost:
-                    self.intakeBallLost = True
-                    self.intakeBallSeen = False
-                    self.eventIntakeBallLost.broadcast()
+def hugBall():
+    ballHugger.pump_on()
+    ballHugger.retract(CylinderType.CYLINDER1)
+    ballHugger.retract(CylinderType.CYLINDER2)
 
-    def checkTopEye(self):
-        if self.topEye.installed():
-            if self.isBallOnTop():
-                if not self.topBallSeen:
-                    self.topBallSeen = True
-                    self.topBallLost = False
-                    self.eventCatBallSeen.broadcast()
-            else:
-                if not self.topBallLost:
-                    self.topBallSeen = False
-                    self.topBallLost = True
-                    self.eventCatBallLost.broadcast()
+def stopAll():
+    stopCatAndBelt()
+    releaseHug(stop=True)
+    if not intakeRunning: ballHugger.pump_off()  # Stop TWICE to shut off the pump
+    stopIntake(HOLD)
 
-    def checkSensors(self):
-        while True: # Loop forever in a thread (like "when started" in Vex Blocks)
-            self.checkIntakeEye()
-            self.checkTopEye()            
-            wait(10, MSEC)
+def onCatSeen():
+    pass
 
-    def run(self):
-        self.setup()
-        self.clearScreen()
+def onCatLost():
+    pass
+
+# Broadcasters
+buttBumperPressed: Event = Event(onButtBumperPressed)
+buttBumperReleased: Event = Event(onButtBumperReleased)
+
+def checkEyes():
+    intakeEye.setCallbacks(onIntakeBallSeen, onIntakeBallLost)
+    topEye.setCallbacks(onTopBallSeen, onTopBallLost)
+    catEye.setCallbacks(onCatSeen, onCatLost)
+    while True: # Loop forever in a thread (like "when started" in Vex Blocks)
+        intakeEye.look()
+        topEye.look()
+        catEye.look()
+        wait(10, MSEC)
+
+sensorThread = Thread(checkEyes)
+
+def run():
+    setup()
+    clearScreen()
 
 # ============================================================================
 # ============================================================================
 # ============================================================================
 
-class DriveBot(Bot):
-    def __init__(self):
-        super().__init__()
+controller: Controller = Controller()
 
-    def setup(self):
-        self.setupController()
-        super().setup()
+def onLDown():
+    stopCatAndBelt() if catBeltRunning else startBelt()
 
-    def setupController(self):
-        self.controller = Controller()
-        self.controller.buttonLUp.pressed(self.startIntake)  
-        self.controller.buttonLDown.pressed(self.onLDown)
-        self.controller.buttonRUp.pressed(self.releaseDriveCatapult)
-        self.controller.buttonRDown.pressed(self.windCat)
-        self.controller.buttonEUp.pressed(self.startBelt)
-        self.controller.buttonEDown.pressed(self.reverseIntake)
-        self.controller.buttonFUp.pressed(self.stopAll)
-        wait(15, MSEC)
+def cancelCatapultRewind():
+    # Special trick: hold down EUp to cancel re-wind of catapult
+    return controller.buttonEUp.pressing()
 
-    def onLDown(self):
-        self.stopCatAndBelt() if self.catBeltRunning else self.startBelt()
+def releaseDriveCatapult():
+    # This is passing a function, not a function call return value!
+    releaseCat(cancelCatapultRewind)
 
-    def isContinuous(self) -> bool:
-        return self.controller.buttonLDown.pressing()
+def setupController():
+    controller.buttonLUp.pressed(startIntake)  
+    controller.buttonLDown.pressed(onLDown)
+    controller.buttonRUp.pressed(releaseDriveCatapult)
+    controller.buttonRDown.pressed(windCat)
+    controller.buttonEUp.pressed(startBelt)
+    controller.buttonEDown.pressed(reverseIntake)
+    controller.buttonFUp.pressed(stopAll)
+    wait(15, MSEC)
 
-    def cancelCatapultRewind(self):
-        # Special trick: hold down EUp to cancel re-wind of catapult
-        return self.controller.buttonEUp.pressing()
+def updateDriveMotor(drive: Motor, velocity: float, joystickTolerance: int):
+    if math.fabs(velocity) <= joystickTolerance: velocity = 0
+    drive.set_velocity(round(velocity), PERCENT)
 
-    def releaseDriveCatapult(self):
-        # This is passing a function, not a function call return value!
-        self.releaseCat(self.cancelCatapultRewind)
-
-    def updateDriveMotor(self, drive: Motor, velocity: float, joystickTolerance: int):
-        if math.fabs(velocity) <= joystickTolerance: velocity = 0
-        drive.set_velocity(round(velocity), PERCENT)
-
-    def run(self):
-        super().run()
-        self.clearScreen()
-        self.print("Extreme Axolotls!")
-        self.print("Ready")
-        while True:
-            self.updateDriveMotor(self.wheelRight, self.controller.axisD.position(), 5)
-            self.updateDriveMotor(self.wheelLeft, self.controller.axisA.position(), 5)
-            sleep(20, MSEC)
+def drive():
+    run()
+    setupController()
+    isContinuousCallback = lambda: controller.buttonLDown.pressing()
+    clearScreen()
+    brainPrint("Extreme Axolotls!")
+    brainPrint("Ready")
+    while True:
+        updateDriveMotor(wheelRight, controller.axisD.position(), 5)
+        updateDriveMotor(wheelLeft, controller.axisA.position(), 5)
+        sleep(20, MSEC)
 
 
 # Where it all begins.
-bot = DriveBot()
-bot.run()
+drive()
