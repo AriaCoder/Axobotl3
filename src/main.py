@@ -192,9 +192,24 @@ def onBumperPressed():
     ledLeft.set_color(Color.GREEN)
     buttBumperPressed.broadcast()
 
+<<<<<<< HEAD
 def onBumperReleased():
     ledLeft.off()
     buttBumperReleased.broadcast()
+=======
+    def windCat(self):  # Up Button
+        self.releaseHug()
+        self.catBeltLeft.spin(FORWARD)
+        self.catBeltRight.spin(FORWARD)
+        for _ in range(3 * 100):  # 3 seconds @ 10ms/loop
+            if self.isCatDown(): break
+            wait(10, MSEC)
+        # TODO: Check if we still need/want this. Tune it to new Gen3 bot?
+        # Spinning the catapult a little more because sensor placement can't go lower
+        self.catBeltRight.spin_for(FORWARD, 50, DEGREES, wait = False)
+        self.catBeltLeft.spin_for(FORWARD, 50, DEGREES)
+        self.stopCatAndBelt()
+>>>>>>> e95d8a3d8c7bf4423f7a7fb40314b17dba796171
 
 def releaseCat(cancelRewind = None): # Down Button
     releaseHug()
