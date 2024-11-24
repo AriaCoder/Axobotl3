@@ -154,7 +154,7 @@ def setupCatBelt(velocity: int = 100):
     updateMotor(catBeltLeft, velocity, brakeType=HOLD, spinNow=False)
     updateMotor(catBeltRight, velocity, brakeType=HOLD, spinNow=False)
     buttBumper.pressed(onBumperPressed)
-    buttBumper.released(onBumperReleased)
+   # buttBumper.released(onBumperReleased)
     ballHugger.pump_on()
 
 def spinIntake(direction: DirectionType.DirectionType):
@@ -192,11 +192,6 @@ def onBumperPressed():
     ledLeft.set_color(Color.GREEN)
     buttBumperPressed.broadcast()
 
-<<<<<<< HEAD
-def onBumperReleased():
-    ledLeft.off()
-    buttBumperReleased.broadcast()
-=======
     def windCat(self):  # Up Button
         self.releaseHug()
         self.catBeltLeft.spin(FORWARD)
@@ -209,7 +204,6 @@ def onBumperReleased():
         self.catBeltRight.spin_for(FORWARD, 50, DEGREES, wait = False)
         self.catBeltLeft.spin_for(FORWARD, 50, DEGREES)
         self.stopCatAndBelt()
->>>>>>> e95d8a3d8c7bf4423f7a7fb40314b17dba796171
 
 def releaseCat(cancelRewind = None): # Down Button
     releaseHug()
