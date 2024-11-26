@@ -107,7 +107,9 @@ def onButtBumperReleased():
     pass
 
 def onIntakeBallSeen():
-    if topEye.isObjectVisible(): stopIntake()
+    if topEye.isObjectVisible(): stopIntake()    
+    if not isContinuousCallback or not isContinuousCallback():
+        releaseHug()
 
 def onIntakeBallLost():
     pass
@@ -192,19 +194,6 @@ def onBumperPressed():
     ledLeft.set_color(Color.GREEN)
     buttBumperPressed.broadcast()
 
-    def windCat(self):  # Up Button
-        self.releaseHug()
-        self.catBeltLeft.spin(FORWARD)
-        self.catBeltRight.spin(FORWARD)
-        for _ in range(3 * 100):  # 3 seconds @ 10ms/loop
-            if self.isCatDown(): break
-            wait(10, MSEC)
-        # TODO: Check if we still need/want this. Tune it to new Gen3 bot?
-        # Spinning the catapult a little more because sensor placement can't go lower
-        self.catBeltRight.spin_for(FORWARD, 50, DEGREES, wait = False)
-        self.catBeltLeft.spin_for(FORWARD, 50, DEGREES)
-        self.stopCatAndBelt()
-
 def releaseCat(cancelRewind = None): # Down Button
     releaseHug()
     catBeltRight.spin_for(FORWARD, 180, DEGREES, wait=False)
@@ -229,13 +218,13 @@ def windCat():  # Up Button
 def releaseHug(stop: bool = True):
     if stop: stopCatAndBelt()
     ballHugger.pump_on()
-    ballHugger.extend(CylinderType.CYLINDER1)
-    ballHugger.extend(CylinderType.CYLINDER2)
+    ballHugger.retract(CylinderType.CYLINDER1)
+    ballHugger.retract(CylinderType.CYLINDER2)
 
 def hugBall():
     ballHugger.pump_on()
-    ballHugger.retract(CylinderType.CYLINDER1)
-    ballHugger.retract(CylinderType.CYLINDER2)
+    ballHugger.extend(CylinderType.CYLINDER1)
+    ballHugger.extend(CylinderType.CYLINDER2)
 
 def stopAll():
     stopCatAndBelt()
