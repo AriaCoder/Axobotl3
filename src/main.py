@@ -45,8 +45,8 @@ inertial = Inertial()
 wheelLeft = Motor(Ports.PORT7, 2.0, True)  # Gear ratio: 2:1
 wheelRight = Motor(Ports.PORT12, 2.0, False)
 intakeEye = Eye(Ports.PORT6, 80, MM)
-topEye = Eye(Ports.PORT5, 35, MM)
-catEye = Eye(Ports.PORT2, 80, MM)
+topEye = Eye(Ports.PORT5, 70, MM)
+catEye = Eye(Ports.PORT2, 30, MM)
 catBeltLeft = Motor(Ports.PORT3)
 catBeltRight = Motor(Ports.PORT11,True)
 intakeLeft = Motor(Ports.PORT4, True)
@@ -107,7 +107,10 @@ def onButtBumperReleased():
     pass
 
 def onIntakeBallSeen():
-    if topEye.isObjectVisible(): stopIntake()    
+    print("akjijtioaw")
+    if topEye.isObjectVisible():
+        stopIntake() 
+        print("Stopped Intake")   
     if not isContinuousCallback or not isContinuousCallback():
         releaseHug()
 
@@ -120,7 +123,7 @@ def onTopBallSeen():
         releaseHug()
 
 def onTopBallLost():
-    if topEye.isObjectVisible():
+    if not topEye.isObjectVisible():
         if not catEye.isObjectVisible():
             stopIntake()
             windCat()
