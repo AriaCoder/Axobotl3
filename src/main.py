@@ -160,11 +160,13 @@ def setupCatBelt(velocity: int = 100):
     ballHugger.pump_on()
 
 def spinIntake(direction: DirectionType.DirectionType):
+    global intakeRunning
     intakeLeft.spin(direction)
     intakeRight.spin(direction) # Motor is configured reverse
     intakeRunning = True
 
 def stopIntake(mode = HOLD):
+    global intakeRunning
     intakeLeft.stop(mode)
     intakeRight.stop(mode)
     intakeRunning = False
@@ -179,12 +181,14 @@ def reverseIntake():
     spinIntake(FORWARD)
 
 def startBelt():
+    global catBeltRunning
     hugBall()
     catBeltLeft.spin(REVERSE)
     catBeltRight.spin(REVERSE)
     catBeltRunning = True
 
 def stopCatAndBelt():
+    global catBeltRunning
     catBeltLeft.stop(HOLD)
     catBeltRight.stop(HOLD)
     catBeltRunning = False
@@ -290,6 +294,7 @@ def updateDriveMotor(drive: Motor, velocity: float, joystickTolerance: int):
     drive.set_velocity(round(velocity), PERCENT)
 
 def drive():
+    global isContinuousCallback
     run()
     setupController()
     isContinuousCallback = lambda: controller.buttonLDown.pressing()
