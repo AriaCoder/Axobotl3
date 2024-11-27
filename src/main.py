@@ -225,16 +225,19 @@ def windCat():  # Up Button
 def releaseHug(stop: bool = True):
     if stop: stopCatAndBelt()
     ballHugger.pump_on()
+    print("Releasing hug")
     ballHugger.retract(CylinderType.CYLINDER1)
     ballHugger.retract(CylinderType.CYLINDER2)
 
 def hugBall():
     ballHugger.pump_on()
+    print("Hugging")
     ballHugger.extend(CylinderType.CYLINDER1)
     ballHugger.extend(CylinderType.CYLINDER2)
 
 def stopAll():
     stopCatAndBelt()
+    windCat()
     releaseHug(stop=True)
     if not intakeRunning: ballHugger.pump_off()  # Stop TWICE to shut off the pump
     stopIntake(HOLD)
@@ -287,7 +290,6 @@ def setupController():
     controller.buttonLDown.pressed(onLDown)
     controller.buttonRUp.pressed(releaseDriveCatapult)
     controller.buttonRDown.pressed(windCat)
-    controller.buttonEUp.pressed(startBelt)
     controller.buttonEDown.pressed(reverseIntake)
     controller.buttonFUp.pressed(stopAll)
     wait(15, MSEC)
