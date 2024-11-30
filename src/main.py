@@ -87,9 +87,13 @@ def setup():
     catBeltRight.set_max_torque(100, PERCENT)
     setupCatBelt()
 
-def clearScreen(screenColor = None, penColor = None):
-    screenColor = screenColor if screenColor is None else screenColor
-    penColor = penColor if penColor is None else penColor
+def clearScreen(screenColorIn = None, penColorIn = None):
+    global screenColor
+    global penColor
+    if screenColorIn is not None:
+        screenColor = screenColorIn
+    if penColorIn is not None:
+        penColor = penColorIn
     brain.screen.clear_screen()
     brain.screen.set_fill_color(screenColor)
     brain.screen.set_pen_color(screenColor)
@@ -230,6 +234,15 @@ def windCat():  # Up Button
     catBeltRight.spin_for(FORWARD, 10, DEGREES, wait = False)
     catBeltLeft.spin_for(FORWARD, 10, DEGREES)
     stopCatAndBelt()
+
+
+def releaseCat(cancelRewind = None): # Down Button
+    releaseHug()
+    catBeltRight.spin_for(FORWARD, 180, DEGREES, wait=False)
+    catBeltLeft.spin_for(FORWARD, 180, DEGREES)
+    # cancelWinding lets the caller of releaseCatapult() know
+    # if winding should be cancelled (keeps tension off rubber bands)
+    if (cancelRewind is None or not cancelRewind()): windCat()
 
 def releaseHug(stop: bool = True):
     if stop: stopCatAndBelt()
