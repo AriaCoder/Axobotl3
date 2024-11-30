@@ -50,7 +50,7 @@ wheelRight = Motor(Ports.PORT12, 2.0, False)
 intakeEye = Eye(Ports.PORT6, 80, MM)
 topEye = Eye(Ports.PORT5, 50, MM)
 catEye = Eye(Ports.PORT2, 30, MM)
-backEye = Eye(Ports.PORT8, 30, MM)
+backEye = Eye(Ports.PORT8, 20, MM)
 catBeltLeft = Motor(Ports.PORT3)
 catBeltRight = Motor(Ports.PORT11,True)
 intakeLeft = Motor(Ports.PORT4, True)
@@ -114,8 +114,9 @@ def onIntakeBallSeen():
         print("starting")
         startBelt()
     else:
-        stopCatAndBelt()
         if not isContinuousCallback or not isContinuousCallback():
+            print("Stop2")
+            stopCatAndBelt()        
             releaseHug()
 
 def onIntakeBallLost():
@@ -123,11 +124,12 @@ def onIntakeBallLost():
 
 def onTopBallSeen():
     if backEye.isObjectVisible():
-        stopCatAndBelt()
+        if not isContinuousCallback or not isContinuousCallback():
+            pass
+           # stopCatAndBelt()
     if not isContinuousCallback or not isContinuousCallback():
         if intakeEye.isObjectVisible(): stopIntake()
         releaseHug()
-
 def onTopBallLost():
     if not topEye.isObjectVisible():
         if not catEye.isObjectVisible():
@@ -137,7 +139,8 @@ def onTopBallLost():
     
 def onBackBallSeen():
     if not isContinuousCallback or not isContinuousCallback():
-        stopIntake()
+        wait(500, MSEC)
+       # stopIntake()
 
 def onBackBallLost():
     pass
@@ -186,9 +189,14 @@ def stopIntake(mode = HOLD):
     intakeRunning = False
 
 def startIntake():
-    if not catEye.isObjectVisible(): windCat()
-    if isContinuousCallback and isContinuousCallback(): hugBall()
-    else: releaseHug(stop=True)  # Open up for the next ball
+    if not catEye.isObjectVisible(): 
+        windCat()
+    if isContinuousCallback and isContinuousCallback():
+        hugBall()
+    else:
+
+        releaseHug()  # Open up for the next ball
+        
     spinIntake(REVERSE)
 
 def reverseIntake():
@@ -212,13 +220,13 @@ def stopCatAndBelt():
 
 def releaseCat(cancelRewind = None): # Down Button
     releaseHug()
-    if not backEye.isInstalled() or backEye.isObjectVisible():
-        startBelt(release=True)
-        wait(500, MSEC)
+    startBelt(release=True)
+    wait(1000, MSEC)
     catBeltRight.spin_for(FORWARD, 180, DEGREES, wait=False)
     catBeltLeft.spin_for(FORWARD, 180, DEGREES)
     # cancelWinding lets the caller of releaseCatapult() know
     # if winding should be cancelled (keeps tension off rubber bands)
+    print("Stop3")
     stopCatAndBelt()
     if (cancelRewind is None or not cancelRewind()): windCat()
 
@@ -235,8 +243,9 @@ def windCat():  # Up Button
     catBeltLeft.spin_for(FORWARD, 10, DEGREES)
     stopCatAndBelt()
 
-def releaseHug(stop: bool = True):
-    if stop: stopCatAndBelt()
+def releaseHug(stop: bool = False):
+  #  stopCatAndBelt()
+  #  print("Stop1")
     ballHugger.pump_on()
     brainPrint("Releasing hug", True)
     ballHugger.retract(CylinderType.CYLINDER1)
@@ -251,7 +260,7 @@ def hugBall():
 def stopAll():
     stopCatAndBelt()
     windCat()
-    releaseHug(stop=True)
+    releaseHug()
     if not intakeRunning: ballHugger.pump_off()  # Stop TWICE to shut off the pump
     stopIntake(HOLD)
 
