@@ -20,6 +20,9 @@ class Eye:
         self.eventSeen = Event(callbackSeen)
         self.eventLost = Event(callbackLost)
 
+    def isInstalled(self) -> bool:
+        return self.sensor.installed()
+
     def isObjectVisible(self) -> bool:
         return True if self.sensor.object_distance(self.units) <= self.distanceThreshold else False
     
@@ -45,15 +48,15 @@ inertial = Inertial()
 wheelLeft = Motor(Ports.PORT7, 2.0, True)  # Gear ratio: 2:1
 wheelRight = Motor(Ports.PORT12, 2.0, False)
 intakeEye = Eye(Ports.PORT6, 80, MM)
-topEye = Eye(Ports.PORT5, 70, MM)
+topEye = Eye(Ports.PORT5, 50, MM)
 catEye = Eye(Ports.PORT2, 30, MM)
+backEye = Eye(Ports.PORT8, 30, MM)
 catBeltLeft = Motor(Ports.PORT3)
 catBeltRight = Motor(Ports.PORT11,True)
 intakeLeft = Motor(Ports.PORT4, True)
 intakeRight = Motor(Ports.PORT1)
 ledLeft = Touchled(Ports.PORT10)
 ledRight = Touchled(Ports.PORT9)
-buttBumper = Bumper(Ports.PORT8)
 ballHugger = Pneumatic(Ports.PORT10)
 screenColor: Color.DefinedColor = Color.BLUE
 penColor: Color.DefinedColor = Color.WHITE
@@ -95,29 +98,28 @@ def clearScreen(screenColor = None, penColor = None):
     brain.screen.set_font(FontType.MONO20)
     brain.screen.set_cursor(1, 1)
 
-def brainPrint(message):
+def brainPrint(message, clear = False):
+    if clear == True:
+        brain.screen.clear_row()
     brain.screen.print(message)
     brain.screen.new_line()
     print(message)  # For connected console
 
-def onButtBumperPressed():
-    pass
-
-def onButtBumperReleased():
-    pass
-
-def onIntakeBallSeen():
-    print("akjijtioaw")
+def onIntakeBallSeen(): 
     if topEye.isObjectVisible():
-        stopIntake() 
-        print("Stopped Intake")   
-    if not isContinuousCallback or not isContinuousCallback():
-        releaseHug()
+        print("starting")
+        startBelt()
+    else:
+        stopCatAndBelt()
+        if not isContinuousCallback or not isContinuousCallback():
+            releaseHug()
 
 def onIntakeBallLost():
     pass
 
 def onTopBallSeen():
+    if backEye.isObjectVisible():
+        stopCatAndBelt()
     if not isContinuousCallback or not isContinuousCallback():
         if intakeEye.isObjectVisible(): stopIntake()
         releaseHug()
@@ -128,6 +130,13 @@ def onTopBallLost():
             stopIntake()
             windCat()
         if not topEye.isObjectVisible() and intakeEye.isObjectVisible(): spinIntake(REVERSE)
+    
+def onBackBallSeen():
+    if not isContinuousCallback or not isContinuousCallback():
+        stopIntake()
+
+def onBackBallLost():
+    pass
 
 def updateMotor(motor: Motor,
                 velocityPercent: float,
@@ -158,8 +167,6 @@ def stopDriveTrain(brakeType: BrakeType.BrakeType = COAST):
 def setupCatBelt(velocity: int = 100):
     updateMotor(catBeltLeft, velocity, brakeType=HOLD, spinNow=False)
     updateMotor(catBeltRight, velocity, brakeType=HOLD, spinNow=False)
-    buttBumper.pressed(onBumperPressed)
-   # buttBumper.released(onBumperReleased)
     ballHugger.pump_on()
 
 def spinIntake(direction: DirectionType.DirectionType):
@@ -183,9 +190,12 @@ def startIntake():
 def reverseIntake():
     spinIntake(FORWARD)
 
-def startBelt():
+def startBelt(release=False):
     global catBeltRunning
-    hugBall()
+    if release == False:
+        hugBall()
+    else:
+        releaseHug()
     catBeltLeft.spin(REVERSE)
     catBeltRight.spin(REVERSE)
     catBeltRunning = True
@@ -196,17 +206,16 @@ def stopCatAndBelt():
     catBeltRight.stop(HOLD)
     catBeltRunning = False
 
-def onBumperPressed():
-    brain.play_sound(SoundType.TADA)
-    ledLeft.set_color(Color.GREEN)
-    buttBumperPressed.broadcast()
-
 def releaseCat(cancelRewind = None): # Down Button
     releaseHug()
+    if not backEye.isInstalled() or backEye.isObjectVisible():
+        startBelt(release=True)
+        wait(500, MSEC)
     catBeltRight.spin_for(FORWARD, 180, DEGREES, wait=False)
     catBeltLeft.spin_for(FORWARD, 180, DEGREES)
     # cancelWinding lets the caller of releaseCatapult() know
     # if winding should be cancelled (keeps tension off rubber bands)
+    stopCatAndBelt()
     if (cancelRewind is None or not cancelRewind()): windCat()
 
 def windCat():  # Up Button
@@ -225,13 +234,13 @@ def windCat():  # Up Button
 def releaseHug(stop: bool = True):
     if stop: stopCatAndBelt()
     ballHugger.pump_on()
-    print("Releasing hug")
+    brainPrint("Releasing hug", True)
     ballHugger.retract(CylinderType.CYLINDER1)
     ballHugger.retract(CylinderType.CYLINDER2)
 
 def hugBall():
     ballHugger.pump_on()
-    print("Hugging")
+    brainPrint("Hugging", True)
     ballHugger.extend(CylinderType.CYLINDER1)
     ballHugger.extend(CylinderType.CYLINDER2)
 
@@ -249,13 +258,12 @@ def onCatLost():
     pass
 
 # Broadcasters
-buttBumperPressed: Event = Event(onButtBumperPressed)
-buttBumperReleased: Event = Event(onButtBumperReleased)
 
 def checkEyes():
     intakeEye.setCallbacks(onIntakeBallSeen, onIntakeBallLost)
     topEye.setCallbacks(onTopBallSeen, onTopBallLost)
     catEye.setCallbacks(onCatSeen, onCatLost)
+    backEye.setCallbacks(onBackBallSeen, onBackBallLost)
     while True: # Loop forever in a thread (like "when started" in Vex Blocks)
         intakeEye.look()
         topEye.look()
