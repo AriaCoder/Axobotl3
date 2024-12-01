@@ -9,6 +9,7 @@ from vex import *
 class Eye:
     def __init__(self, portNumber: int, distanceThreshold: int, units: DistanceUnits.DistanceUnits = DistanceUnits.MM):
         self.sensor = Distance(portNumber)
+        self.sensor.changed(self.look)
         self.distanceThreshold: int = distanceThreshold
         self.units = units
         self.seen: bool = False  # Variables keep us from broadcast()-ing repeatedly
@@ -26,29 +27,26 @@ class Eye:
     def isObjectVisible(self) -> bool:
         return True if self.sensor.object_distance(self.units) <= self.distanceThreshold else False
     
-    def look(self) -> bool:
+    def look(self):
         if self.sensor.installed():
             if self.isObjectVisible():
                 if not self.seen:
                     self.seen = True
                     self.lost = False
                     if self.eventSeen: self.eventSeen.broadcast()
-                    return True
             else:
                 if not self.lost:
                     self.seen = False
                     self.lost = True
                     if self.eventLost: self.eventLost.broadcast()
-        return False
 
 # Setup
 brain = Brain()
 inertial = Inertial()
-
 wheelLeft = Motor(Ports.PORT7, 2.0, True)  # Gear ratio: 2:1
 wheelRight = Motor(Ports.PORT12, 2.0, False)
 intakeEye = Eye(Ports.PORT6, 80, MM)
-topEye = Eye(Ports.PORT5, 50, MM)
+topEye = Eye(Ports.PORT5, 40, MM)
 catEye = Eye(Ports.PORT2, 30, MM)
 backEye = Eye(Ports.PORT8, 20, MM)
 catBeltLeft = Motor(Ports.PORT3)
@@ -67,7 +65,6 @@ intakeRunning: bool = False
 isContinuousCallback = None
 
 wait(15, MSEC)  # Allow events and everything else to initialize
-
 
 def setup():
     clearScreen()
@@ -109,13 +106,23 @@ def brainPrint(message, clear = False):
     brain.screen.new_line()
     print(message)  # For connected console
 
+def moveBallFromTopToBack():
+    if topEye.isObjectVisible() and not backEye.isObjectVisible():
+        startBelt(release=True)
+        timeoutMs: int = 5000
+        while (timeoutMs > 0 and not backEye.isObjectVisible()):
+            wait(10, MSEC)
+            timeoutMs -= 10
+        if timeoutMs <= 0:
+            print("Timed out moving the ball")
+        stopCatAndBelt()
+
 def onIntakeBallSeen(): 
-    if topEye.isObjectVisible():
-        print("starting")
-        startBelt()
+    if topEye.isObjectVisible() and not backEye.isObjectVisible():
+        releaseHug()
+        moveBallFromTopToBack()
     else:
         if not isContinuousCallback or not isContinuousCallback():
-            print("Stop2")
             stopCatAndBelt()        
             releaseHug()
 
@@ -123,24 +130,13 @@ def onIntakeBallLost():
     pass
 
 def onTopBallSeen():
-    if backEye.isObjectVisible():
-        if not isContinuousCallback or not isContinuousCallback():
-            pass
-           # stopCatAndBelt()
-    if not isContinuousCallback or not isContinuousCallback():
-        if intakeEye.isObjectVisible(): stopIntake()
-        releaseHug()
+    pass
+
 def onTopBallLost():
-    if not topEye.isObjectVisible():
-        if not catEye.isObjectVisible():
-            stopIntake()
-            windCat()
-        if not topEye.isObjectVisible() and intakeEye.isObjectVisible(): spinIntake(REVERSE)
+    pass
     
 def onBackBallSeen():
-    if not isContinuousCallback or not isContinuousCallback():
-        wait(500, MSEC)
-       # stopIntake()
+    pass
 
 def onBackBallLost():
     pass
@@ -189,14 +185,11 @@ def stopIntake(mode = HOLD):
     intakeRunning = False
 
 def startIntake():
-    if not catEye.isObjectVisible(): 
-        windCat()
+    windCat()
     if isContinuousCallback and isContinuousCallback():
         hugBall()
     else:
-
         releaseHug()  # Open up for the next ball
-        
     spinIntake(REVERSE)
 
 def reverseIntake():
@@ -204,10 +197,7 @@ def reverseIntake():
 
 def startBelt(release=False):
     global catBeltRunning
-    if release == False:
-        hugBall()
-    else:
-        releaseHug()
+    releaseHug() if release else hugBall()
     catBeltLeft.spin(REVERSE)
     catBeltRight.spin(REVERSE)
     catBeltRunning = True
@@ -221,27 +211,33 @@ def stopCatAndBelt():
 def releaseCat(cancelRewind = None): # Down Button
     releaseHug()
     startBelt(release=True)
-    wait(1000, MSEC)
+    timeoutMs: int = 1000
+    while (backEye.isObjectVisible() and timeoutMs > 0):
+        wait(100, MSEC)
+        timeoutMs -= 100
+
     catBeltRight.spin_for(FORWARD, 180, DEGREES, wait=False)
     catBeltLeft.spin_for(FORWARD, 180, DEGREES)
     # cancelWinding lets the caller of releaseCatapult() know
     # if winding should be cancelled (keeps tension off rubber bands)
-    print("Stop3")
+
     stopCatAndBelt()
     if (cancelRewind is None or not cancelRewind()): windCat()
 
 def windCat():  # Up Button
-    releaseHug()
-    catBeltLeft.spin(FORWARD)
-    catBeltRight.spin(FORWARD)
-    for _ in range(3 * 100):  # 3 seconds @ 10ms/loop
-        if catEye.isObjectVisible(): break
-        wait(10, MSEC)
-    # TODO: Check if we still need/want this. Tune it to new Gen3 bot?
-    # Spinning the catapult a little more because sensor placement can't go lower
-    catBeltRight.spin_for(FORWARD, 10, DEGREES, wait = False)
-    catBeltLeft.spin_for(FORWARD, 10, DEGREES)
-    stopCatAndBelt()
+    if (not isContinuousCallback or not isContinuousCallback()):
+        releaseHug()
+    if not catEye.isObjectVisible(): 
+        catBeltLeft.spin(FORWARD)
+        catBeltRight.spin(FORWARD)
+        for _ in range(3 * 100):  # 3 seconds @ 10ms/loop
+            if catEye.isObjectVisible(): break
+            wait(10, MSEC)
+        # TODO: Check if we still need/want this. Tune it to new Gen3 bot?
+        # Spinning the catapult a little more because sensor placement can't go lower
+        catBeltRight.spin_for(FORWARD, 10, DEGREES, wait = False)
+        catBeltLeft.spin_for(FORWARD, 10, DEGREES)
+        stopCatAndBelt()
 
 def releaseHug(stop: bool = False):
   #  stopCatAndBelt()
@@ -270,20 +266,11 @@ def onCatSeen():
 def onCatLost():
     pass
 
-# Broadcasters
-
-def checkEyes():
-    intakeEye.setCallbacks(onIntakeBallSeen, onIntakeBallLost)
-    topEye.setCallbacks(onTopBallSeen, onTopBallLost)
-    catEye.setCallbacks(onCatSeen, onCatLost)
-    backEye.setCallbacks(onBackBallSeen, onBackBallLost)
-    while True: # Loop forever in a thread (like "when started" in Vex Blocks)
-        intakeEye.look()
-        topEye.look()
-        catEye.look()
-        wait(10, MSEC)
-
-sensorThread = Thread(checkEyes)
+# Setup the callbacks
+topEye.setCallbacks(onTopBallSeen, onTopBallLost)
+catEye.setCallbacks(onCatSeen, onCatLost)
+backEye.setCallbacks(onBackBallSeen, onBackBallLost)
+intakeEye.setCallbacks(onIntakeBallSeen, onIntakeBallLost)
 
 def run():
     setup()
