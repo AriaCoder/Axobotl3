@@ -187,6 +187,7 @@ def stopIntake(mode = HOLD):
 def startIntake():
     windCat()
     if isContinuousCallback and isContinuousCallback():
+        startBelt()
         hugBall()
     else:
         releaseHug()  # Open up for the next ball
