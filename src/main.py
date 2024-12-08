@@ -45,8 +45,8 @@ brain = Brain()
 inertial = Inertial()
 wheelLeft = Motor(Ports.PORT7, 2.0, True)  # Gear ratio: 2:1
 wheelRight = Motor(Ports.PORT12, 2.0, False)
-intakeEye = Eye(Ports.PORT6, 80, MM)
-topEye = Eye(Ports.PORT5, 40, MM)
+intakeEye = Eye(Ports.PORT6, 90, MM)
+topEye = Eye(Ports.PORT5, 70, MM)
 catEye = Eye(Ports.PORT2, 30, MM)
 backEye = Eye(Ports.PORT8, 20, MM)
 catBeltLeft = Motor(Ports.PORT3)
@@ -106,25 +106,29 @@ def brainPrint(message, clear = False):
     brain.screen.new_line()
     print(message)  # For connected console
 
+def checkTwoBallsOnTop() -> bool:
+    return True if (topEye.isObjectVisible() and backEye.isObjectVisible()) else False
+
 def moveBallFromTopToBack():
     if topEye.isObjectVisible() and not backEye.isObjectVisible():
-        startBelt(release=True)
-        timeoutMs: int = 5000
+        hugBall()
+        print("Sees Ball on Top")
+        startBelt(release=False)
+        timeoutMs: int = 2000
         while (timeoutMs > 0 and not backEye.isObjectVisible()):
             wait(10, MSEC)
             timeoutMs -= 10
         if timeoutMs <= 0:
             print("Timed out moving the ball")
+        else:
+            print("Done!")
         stopCatAndBelt()
+        releaseHug()
 
 def onIntakeBallSeen(): 
-    if topEye.isObjectVisible() and not backEye.isObjectVisible():
+    moveBallFromTopToBack()
+    if not isContinuousCallback or not isContinuousCallback():    
         releaseHug()
-        moveBallFromTopToBack()
-    else:
-        if not isContinuousCallback or not isContinuousCallback():
-            stopCatAndBelt()        
-            releaseHug()
 
 def onIntakeBallLost():
     pass
@@ -187,6 +191,7 @@ def stopIntake(mode = HOLD):
 def startIntake():
     windCat()
     if isContinuousCallback and isContinuousCallback():
+        startBelt()
         hugBall()
     else:
         releaseHug()  # Open up for the next ball
@@ -195,12 +200,20 @@ def startIntake():
 def reverseIntake():
     spinIntake(FORWARD)
 
-def startBelt(release=False):
+def startBelt(release = False):
     global catBeltRunning
-    releaseHug() if release else hugBall()
+    twoBalls = checkTwoBallsOnTop()
+    releaseHug() if (release or twoBalls) else hugBall()
+    print(checkTwoBallsOnTop())
     catBeltLeft.spin(REVERSE)
     catBeltRight.spin(REVERSE)
     catBeltRunning = True
+    if twoBalls:
+        # Wait for the back ball to disappear
+        while(backEye.isObjectVisible()):
+            wait(10, MSEC)
+        if (not release):
+            hugBall()
 
 def stopCatAndBelt():
     global catBeltRunning
