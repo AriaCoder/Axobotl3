@@ -48,7 +48,7 @@ wheelRight = Motor(Ports.PORT12, 2.0, False)
 intakeEye = Eye(Ports.PORT6, 90, MM)
 topEye = Eye(Ports.PORT5, 70, MM)
 catEye = Eye(Ports.PORT2, 30, MM)
-backEye = Eye(Ports.PORT8, 20, MM)
+backEye = Eye(Ports.PORT8, 40, MM)
 catBeltLeft = Motor(Ports.PORT3)
 catBeltRight = Motor(Ports.PORT11,True)
 intakeLeft = Motor(Ports.PORT4, True)
@@ -114,9 +114,9 @@ def moveBallFromTopToBack():
         hugBall()
         print("Sees Ball on Top")
         startBelt(release=False)
-        timeoutMs: int = 2000
+        timeoutMs: int = 10000
         while (timeoutMs > 0 and not backEye.isObjectVisible()):
-            wait(10, MSEC)
+            wait(5, MSEC)
             timeoutMs -= 10
         if timeoutMs <= 0:
             print("Timed out moving the ball")
@@ -224,16 +224,16 @@ def stopCatAndBelt():
 def releaseCat(cancelRewind = None): # Down Button
     releaseHug()
     startBelt(release=True)
-    timeoutMs: int = 1000
+    timeoutMs: int = 20000
     while (backEye.isObjectVisible() and timeoutMs > 0):
-        wait(100, MSEC)
-        timeoutMs -= 100
-
+        wait(10, MSEC)
+        timeoutMs -= 10
+    stopCatAndBelt()
+    windCat()
     catBeltRight.spin_for(FORWARD, 180, DEGREES, wait=False)
     catBeltLeft.spin_for(FORWARD, 180, DEGREES)
     # cancelWinding lets the caller of releaseCatapult() know
     # if winding should be cancelled (keeps tension off rubber bands)
-
     stopCatAndBelt()
     if (cancelRewind is None or not cancelRewind()): windCat()
 
@@ -248,8 +248,8 @@ def windCat():  # Up Button
             wait(10, MSEC)
         # TODO: Check if we still need/want this. Tune it to new Gen3 bot?
         # Spinning the catapult a little more because sensor placement can't go lower
-        catBeltRight.spin_for(FORWARD, 10, DEGREES, wait = False)
-        catBeltLeft.spin_for(FORWARD, 10, DEGREES)
+        catBeltRight.spin_for(FORWARD, 20, DEGREES, wait = False)
+        catBeltLeft.spin_for(FORWARD, 20, DEGREES)
         stopCatAndBelt()
 
 def releaseHug(stop: bool = False):
