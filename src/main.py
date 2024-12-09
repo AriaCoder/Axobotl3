@@ -48,7 +48,7 @@ wheelRight = Motor(Ports.PORT12, 2.0, False)
 intakeEye = Eye(Ports.PORT6, 90, MM)
 topEye = Eye(Ports.PORT5, 70, MM)
 catEye = Eye(Ports.PORT2, 30, MM)
-backEye = Eye(Ports.PORT8, 40, MM)
+backEye = Eye(Ports.PORT8, 50, MM)
 catBeltLeft = Motor(Ports.PORT3)
 catBeltRight = Motor(Ports.PORT11,True)
 intakeLeft = Motor(Ports.PORT4, True)
@@ -224,10 +224,10 @@ def stopCatAndBelt():
 def releaseCat(cancelRewind = None): # Down Button
     releaseHug()
     startBelt(release=True)
-    timeoutMs: int = 20000
+    timeoutMs: int = 10000
     while (backEye.isObjectVisible() and timeoutMs > 0):
-        wait(10, MSEC)
         timeoutMs -= 10
+        wait(20, MSEC)   
     stopCatAndBelt()
     windCat()
     catBeltRight.spin_for(FORWARD, 180, DEGREES, wait=False)
